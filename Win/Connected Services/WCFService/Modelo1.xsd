@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="http://schemas.datacontract.org/2004/07/WCF" elementFormDefault="qualified" targetNamespace="http://schemas.datacontract.org/2004/07/WCF" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:complexType name="ArrayOfMessages">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Messages" nillable="true" type="tns:Messages" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfMessages" nillable="true" type="tns:ArrayOfMessages" />
+  <xs:complexType name="Messages">
+    <xs:sequence>
+      <xs:element minOccurs="0" name="Estatus" nillable="true" type="xs:string" />
+      <xs:element minOccurs="0" name="Message" nillable="true" type="xs:string" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="Messages" nillable="true" type="tns:Messages" />
+  <xs:complexType name="ArrayOfGas">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Gas" nillable="true" type="tns:Gas" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="ArrayOfGas" nillable="true" type="tns:ArrayOfGas" />
+  <xs:complexType name="Gas">
+    <xs:sequence>
+      <xs:element minOccurs="0" name="Xaux" type="xs:double" />
+      <xs:element minOccurs="0" name="Yaux" type="xs:double" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="Gas" nillable="true" type="tns:Gas" />
+</xs:schema>

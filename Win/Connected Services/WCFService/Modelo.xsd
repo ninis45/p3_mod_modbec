@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:tns="http://tempuri.org/" elementFormDefault="qualified" targetNamespace="http://tempuri.org/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="http://vwvheappd013.pemex.pmx.com/Modelo/Modelo.svc?xsd=xsd2" namespace="http://schemas.datacontract.org/2004/07/WCF" />
+  <xs:element name="Monitor">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="OpenServer" nillable="true" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="MonitorResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element xmlns:q1="http://schemas.datacontract.org/2004/07/WCF" minOccurs="0" name="MonitorResult" nillable="true" type="q1:ArrayOfMessages" />
+        <xs:element minOccurs="0" name="OpenServer" nillable="true" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="Program">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="ProgramResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="Reset">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="IdModPozo" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="MaxIntentos" type="xs:int" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="ResetResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="Delete">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="IdModPozo" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="IdUsuario" nillable="true" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="DeleteResponse">
+    <xs:complexType>
+      <xs:sequence />
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="Execute">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="IdModPozo" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="User" nillable="true" type="xs:string" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="ExecuteResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="ExecuteResult" type="xs:boolean" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="SensGas">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" name="IdModPozo" nillable="true" type="xs:string" />
+        <xs:element minOccurs="0" name="Qgi" type="xs:double" />
+        <xs:element minOccurs="0" name="Pwh" type="xs:double" />
+        <xs:element minOccurs="0" name="WC" type="xs:double" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="SensGasResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element xmlns:q2="http://schemas.datacontract.org/2004/07/WCF" minOccurs="0" name="SensGasResult" nillable="true" type="q2:ArrayOfGas" />
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

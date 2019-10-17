@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ReferenceGroup xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" ID="e0d43fce-ffae-419c-a9a5-c6facef2573c" xmlns="urn:schemas-microsoft-com:xml-wcfservicemap">
+  <ClientOptions>
+    <GenerateAsynchronousMethods>false</GenerateAsynchronousMethods>
+    <GenerateTaskBasedAsynchronousMethod>true</GenerateTaskBasedAsynchronousMethod>
+    <EnableDataBinding>true</EnableDataBinding>
+    <ExcludedTypes />
+    <ImportXmlTypes>false</ImportXmlTypes>
+    <GenerateInternalTypes>false</GenerateInternalTypes>
+    <GenerateMessageContracts>false</GenerateMessageContracts>
+    <NamespaceMappings />
+    <CollectionMappings />
+    <GenerateSerializableTypes>true</GenerateSerializableTypes>
+    <Serializer>Auto</Serializer>
+    <UseSerializerForFaults>true</UseSerializerForFaults>
+    <ReferenceAllAssemblies>true</ReferenceAllAssemblies>
+    <ReferencedAssemblies />
+    <ReferencedDataContractTypes />
+    <ServiceContractMappings />
+  </ClientOptions>
+  <MetadataSources>
+    <MetadataSource Address="http://vwvheappd013.pemex.pmx.com/Modelo/Modelo.svc" Protocol="http" SourceId="1" />
+  </MetadataSources>
+  <Metadata>
+    <MetadataFile FileName="Modelo.xsd" MetadataType="Schema" ID="9533723c-e9fc-4fb9-bdda-479a1da6c1fb" SourceId="1" SourceUrl="http://vwvheappd013.pemex.pmx.com/Modelo/Modelo.svc?xsd=xsd0" />
+    <MetadataFile FileName="Modelo1.xsd" MetadataType="Schema" ID="08387a42-37d9-41f3-b988-f02b9e21df90" SourceId="1" SourceUrl="http://vwvheappd013.pemex.pmx.com/Modelo/Modelo.svc?xsd=xsd2" />
+    <MetadataFile FileName="Modelo.disco" MetadataType="Disco" ID="d2d6dce3-355e-4f29-b7ca-5c4754875dc8" SourceId="1" SourceUrl="http://vwvheappd013.pemex.pmx.com/Modelo/Modelo.svc?disco" />
+    <MetadataFile FileName="Modelo.wsdl" MetadataType="Wsdl" ID="809e5e48-9e9a-4f02-bdf1-0d7297bc8a05" SourceId="1" SourceUrl="http://vwvheappd013.pemex.pmx.com/Modelo/Modelo.svc?wsdl" />
+    <MetadataFile FileName="Modelo2.xsd" MetadataType="Schema" ID="3bf4dfb8-f28a-4260-8a64-62f1df4c96a3" SourceId="1" SourceUrl="http://vwvheappd013.pemex.pmx.com/Modelo/Modelo.svc?xsd=xsd1" />
+  </Metadata>
+  <Extensions>
+    <ExtensionFile FileName="configuration91.svcinfo" Name="configuration91.svcinfo" />
+    <ExtensionFile FileName="configuration.svcinfo" Name="configuration.svcinfo" />
+  </Extensions>
+</ReferenceGroup>

@@ -1,0 +1,265 @@
+﻿<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{F184B08F-C81C-45F6-A57F-5ABD9991F28F}</ProjectTypeGuids>
+    <RootNamespace>UsrControl</RootNamespace>
+    <AssemblyName>UsrControl</AssemblyName>
+    <OutputType>Library</OutputType>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <MyType>Custom</MyType>
+    <Deterministic>true</Deterministic>
+    <ProjectGuid>{C19AFE99-0DD7-417F-BC56-A93545F2F15D}</ProjectGuid>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <IncrementalBuild>true</IncrementalBuild>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DocumentationFile>UsrControl.xml</DocumentationFile>
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42314</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <IncrementalBuild>false</IncrementalBuild>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DocumentationFile>UsrControl.xml</DocumentationFile>
+    <NoWarn>41999,42016,42017,42018,42019,42020,42021,42022,42032,42036,42314</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionExplicit>On</OptionExplicit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionCompare>Binary</OptionCompare>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionStrict>Off</OptionStrict>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OptionInfer>On</OptionInfer>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="DBConnection">
+      <HintPath>..\WPF\bin\Debug\DBConnection.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework">
+      <HintPath>..\WPF\bin\Debug\EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer">
+      <HintPath>..\WPF\bin\Debug\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
+    <Reference Include="Lagrange">
+      <HintPath>..\WCF\bin\Lagrange.dll</HintPath>
+    </Reference>
+    <Reference Include="ModeloCI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\ModeloCI.dll</HintPath>
+    </Reference>
+    <Reference Include="Prism">
+      <HintPath>..\WPF\bin\Debug\Prism.dll</HintPath>
+    </Reference>
+    <Reference Include="Prism.Unity.Wpf">
+      <HintPath>..\WPF\bin\Debug\Prism.Unity.Wpf.dll</HintPath>
+    </Reference>
+    <Reference Include="Prism.Wpf">
+      <HintPath>..\WPF\bin\Debug\Prism.Wpf.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Drawing.Design" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Interactivity">
+      <HintPath>..\WPF\bin\Debug\System.Windows.Interactivity.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xaml">
+      <RequiredTargetFramework>4.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="TeeChart">
+      <HintPath>..\WPF\bin\Debug\TeeChart.dll</HintPath>
+    </Reference>
+    <Reference Include="TeeChart.WPF">
+      <HintPath>..\WPF\bin\Debug\TeeChart.WPF.dll</HintPath>
+    </Reference>
+    <Reference Include="TeeChart.Xaml.WPF">
+      <HintPath>..\WPF\bin\Debug\TeeChart.Xaml.WPF.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.Windows.Controls, Version=2019.1.220.45, Culture=neutral, PublicKeyToken=5803cfa389c90ce7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Progress\Telerik UI for WPF R1 2019\Binaries\WPF40\Telerik.Windows.Controls.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.Windows.Controls.Data, Version=2019.1.220.45, Culture=neutral, PublicKeyToken=5803cfa389c90ce7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Progress\Telerik UI for WPF R1 2019\Binaries\WPF40\Telerik.Windows.Controls.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.Windows.Controls.GridView, Version=2019.1.220.45, Culture=neutral, PublicKeyToken=5803cfa389c90ce7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Progress\Telerik UI for WPF R1 2019\Binaries\WPF40\Telerik.Windows.Controls.GridView.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.Windows.Controls.Input, Version=2019.1.220.45, Culture=neutral, PublicKeyToken=5803cfa389c90ce7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Progress\Telerik UI for WPF R1 2019\Binaries\WPF40\Telerik.Windows.Controls.Input.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.Windows.Controls.Navigation, Version=2019.1.220.45, Culture=neutral, PublicKeyToken=5803cfa389c90ce7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Progress\Telerik UI for WPF R1 2019\Binaries\WPF40\Telerik.Windows.Controls.Navigation.dll</HintPath>
+    </Reference>
+    <Reference Include="Telerik.Windows.Data, Version=2019.1.220.45, Culture=neutral, PublicKeyToken=5803cfa389c90ce7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Program Files (x86)\Progress\Telerik UI for WPF R1 2019\Binaries\WPF40\Telerik.Windows.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="UIAutomationProvider" />
+    <Reference Include="UIAutomationTypes" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="WindowsFormsIntegration" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="grfCorrelacion.Designer.vb">
+      <DependentUpon>grfCorrelacion.vb</DependentUpon>
+    </Compile>
+    <Compile Include="grfCorrelacion.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="grfDiag.Designer.vb">
+      <DependentUpon>grfDiag.vb</DependentUpon>
+    </Compile>
+    <Compile Include="grfDiag.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="grfGas.Designer.vb">
+      <DependentUpon>grfGas.vb</DependentUpon>
+    </Compile>
+    <Compile Include="grfGas.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="grfProductividad.Designer.vb">
+      <DependentUpon>grfProductividad.vb</DependentUpon>
+    </Compile>
+    <Compile Include="grfProductividad.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="grfVlp.Designer.vb">
+      <DependentUpon>grfVlp.vb</DependentUpon>
+    </Compile>
+    <Compile Include="grfVlp.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="grfWc.Designer.vb">
+      <DependentUpon>grfWc.vb</DependentUpon>
+    </Compile>
+    <Compile Include="grfWc.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="ViewModels\CombosViewModel.vb" />
+    <Compile Include="ViewModels\ConfigViewModel.vb" />
+    <Compile Include="ViewModels\ContextViewModel.vb" />
+    <Compile Include="Views\ConfigView.xaml.vb">
+      <DependentUpon>ConfigView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Main.xaml.vb">
+      <DependentUpon>Main.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\PozoView.xaml.vb">
+      <DependentUpon>PozoView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Clases\Analisis.vb" />
+    <Compile Include="Clases\BaseDatos.vb" />
+    <Compile Include="Clases\BaseDatosServidor.vb" />
+    <Compile Include="Clases\Inicial.vb" />
+    <Compile Include="Clases\Mecanico.vb" />
+    <Compile Include="Helpers\NumToBool.vb" />
+    <Compile Include="Helpers\ToVisibility.vb" />
+    <Compile Include="Models\AgujeroModel.vb" />
+    <Compile Include="Models\BecModel.vb" />
+    <Compile Include="Models\BncModel.vb" />
+    <Page Include="Views\ConfigView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\Main.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\PozoView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Import Include="System.Threading.Tasks" />
+    <Import Include="System.Linq" />
+    <Import Include="System.Xml.Linq" />
+    <Import Include="Microsoft.VisualBasic" />
+    <Import Include="System" />
+    <Import Include="System.Collections" />
+    <Import Include="System.Collections.Generic" />
+    <Import Include="System.Diagnostics" />
+    <Import Include="System.Windows" />
+    <Import Include="System.Windows.Controls" />
+    <Import Include="System.Windows.Data" />
+    <Import Include="System.Windows.Documents" />
+    <Import Include="System.Windows.Input" />
+    <Import Include="System.Windows.Shapes" />
+    <Import Include="System.Windows.Media" />
+    <Import Include="System.Windows.Media.Imaging" />
+    <Import Include="System.Windows.Navigation" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="My Project\AssemblyInfo.vb">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="My Project\Resources.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="My Project\Settings.Designer.vb">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <EmbeddedResource Include="grfCorrelacion.resx">
+      <DependentUpon>grfCorrelacion.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="grfDiag.resx">
+      <DependentUpon>grfDiag.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="grfGas.resx">
+      <DependentUpon>grfGas.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="grfProductividad.resx">
+      <DependentUpon>grfProductividad.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="grfVlp.resx">
+      <DependentUpon>grfVlp.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="grfWc.resx">
+      <DependentUpon>grfWc.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="My Project\licenses.licx" />
+    <EmbeddedResource Include="My Project\Resources.resx">
+      <Generator>VbMyResourcesResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.vb</LastGenOutput>
+      <CustomToolNamespace>My.Resources</CustomToolNamespace>
+    </EmbeddedResource>
+    <None Include="My Project\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.vb</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
+</Project>
