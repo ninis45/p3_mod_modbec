@@ -62,7 +62,7 @@ Public Class Modelo
     End Sub
     Public Function Execute(ByVal IdModPozo As String, ByVal User As String) As Boolean Implements IModelo.Execute
         Try
-            Dim modelo As New ModeloProsper.Modelo()
+            Dim modelo As New ModeloProsper.Modelo(IdModPozo)
             Dim inicio As DateTime = DateTime.Now
 
             Logger = New ModeloProsper.Logger(IdModPozo, User)

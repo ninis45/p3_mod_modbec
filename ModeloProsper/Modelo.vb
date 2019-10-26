@@ -174,7 +174,7 @@ Public Class Modelo
 
         Try
 
-
+            Dim Result As Boolean
 
             Dim vw_mod_pozo = db.VW_MOD_POZO.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
             Dim mod_archivo = (From fil In db.ARCHIVOS_PROSPER Where fil.idModPozo = IdModPozo And fil.fecha = (db.ARCHIVOS_PROSPER.Where(Function(w) w.idModPozo = IdModPozo).Max(Function(m) m.fecha))).SingleOrDefault()
@@ -199,25 +199,6 @@ Public Class Modelo
             Dim edo_mecanico = db.VW_EDO_MECANICO.Where(Function(w) w.IDAGUJERO = vw_mod_pozo.IDAGUJERO).OrderBy(Function(o) o.MD).ToList()
             Dim edo_trayectoria = db.MOD_POZO_TRAYEC.Where(Function(w) w.IDMODPOZO = vw_mod_pozo.IDMODPOZO).OrderBy(Function(o) o.PROFUNDIDADMD).ToList()
             Dim edo_temperatura = db.MOD_POZO_TEMP.Where(Function(w) w.IDMODPOZO = vw_mod_pozo.IDMODPOZO).OrderBy(Function(o) o.PROFUNDIDADMD).ToList()
-
-
-            ''PRUEBAS GENETICAS
-            'edo_mecanico = New List(Of VW_EDO_MECANICO)() From {
-            '    New VW_EDO_MECANICO() With {.ETIQUETA = "E.M.R", .CIDIAM = 0, .CIROUG = 0, .IDAGUJERO = "11", .IDPOZO = "1", .MD = 0, .TIDIAM = 0, .TIROUG = 0, .NUMERO = 0, .TODIAM = 0, .TOROUG = 0},
-            '    New VW_EDO_MECANICO() With {.ETIQUETA = "T.P 4 1/2", .CIDIAM = 8.3, .CIROUG = 0.0018, .IDAGUJERO = "12", .IDPOZO = "1", .MD = 2377.44, .TIDIAM = 3.992, .TIROUG = 0.0018, .NUMERO = 1, .TODIAM = 4.5, .TOROUG = 0.0018},
-            '    New VW_EDO_MECANICO() With {.ETIQUETA = "TR 9 7/8", .CIDIAM = 8.3, .CIROUG = 0.0018, .IDAGUJERO = "13", .IDPOZO = "1", .MD = 2438.4, .TIDIAM = 0, .TIROUG = 0, .NUMERO = 4, .TODIAM = 0, .TOROUG = 0}
-            '}
-
-            'edo_trayectoria = New List(Of MOD_POZO_TRAYEC) From {
-            '    New MOD_POZO_TRAYEC() With {.IDMODPOZO = "1", .PROFUNDIDADMD = 0, .PROFUNDIDADMV = 0, .IDMODPOZOTRAYEC = "11"},
-            '    New MOD_POZO_TRAYEC() With {.IDMODPOZO = "2", .PROFUNDIDADMD = 2438.4, .PROFUNDIDADMV = 2438.4, .IDMODPOZOTRAYEC = "11"}
-            '}
-
-            'edo_temperatura = New List(Of MOD_POZO_TEMP) From {
-            '    New MOD_POZO_TEMP() With {.IDMODPOZO = "1", .PROFUNDIDADMD = 0, .TEMPERATURA = 21.1111},
-            '    New MOD_POZO_TEMP() With {.IDMODPOZO = "2", .PROFUNDIDADMD = 2438.4, .TEMPERATURA = 93.33}
-            '}
-
 
             If edo_mecanico.Count = 0 Then
                 Throw New Exception("Estado mecánico debe ser mayor a cero")
@@ -297,10 +278,8 @@ Public Class Modelo
                         db.Entry(ModPozo).State = Entity.EntityState.Modified
                         db.SaveChanges()
                     End If
-                    If DeleteFile <> "" Then
-                        File.Delete(DeleteFile)
-                    End If
-                    Return True
+
+                    Result = True
                 End If
 
             Else
@@ -309,14 +288,18 @@ Public Class Modelo
             End If
 
 
+            If DeleteFile <> "" And File.Exists(DeleteFile) Then
+                File.Delete(DeleteFile)
+            End If
+
+            Return Result
 
 
         Catch ex As Exception
-            If DeleteFile <> "" Then
+            If DeleteFile <> "" And File.Exists(DeleteFile) Then
                 File.Delete(DeleteFile)
             End If
             Throw New Exception("Execute: " + ex.Message)
-            Return False
         End Try
 
     End Function
