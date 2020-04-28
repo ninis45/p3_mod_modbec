@@ -15,7 +15,10 @@ namespace MsDos
         static void Main(string[] args)
         {
             Entities_ModeloCI db = new Entities_ModeloCI();
-           // ModeloProsper.Modelo modelo = new ModeloProsper.Modelo();
+            ModeloProsper.Modelo modelo = new ModeloProsper.Modelo("A392620C-AA17-462E-A10E-3D16CFA526F9");
+
+
+           // modelo.Execute("A392620C-AA17-462E-A10E-3D16CFA526F9");
 
            // var mod_pozo = db.VW_MOD_POZO.Where(w => w.IDPOZO == "892F201D-41F7-42BE-A7B0-A7643AE77A98").SingleOrDefault();
            // var scheduled = db.CabeceraPozoGBN.Where(w => w.idPozo == "892F201D-41F7-42BE-A7B0-A7643AE77A98").ToList()[0];

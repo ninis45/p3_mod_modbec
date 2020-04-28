@@ -1,0 +1,1 @@
+﻿<%@ ServiceHost Language="VB" Debug="true" Service="WCF.Condiciones" CodeBehind="Condiciones.svc.vb" %>

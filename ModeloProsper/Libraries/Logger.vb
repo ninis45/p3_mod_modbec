@@ -32,19 +32,19 @@ Public Class Logger
 
         Intentos = db.EJECUCION_PROCESOS.Where(Function(w) w.IDCONFIGURACION = Configuracion.IDCONFIGURACION And w.ENDRECORD Is Nothing).Count()
 
-        If Intentos + 1 > Me.Configuracion.MAXREINTENTOS Then
-            Throw New Exception("Numero de intentos permitidos: " + Me.Configuracion.MAXREINTENTOS.ToString())
-        End If
+
 
 
 
 
     End Sub
-    Sub SetLog(ByVal Message As String)
+    'Depreciar parece no hace falta
+    Sub SetLog(ByVal Estatus As Integer, ByVal Message As String)
 
         If Intentos < Configuracion.MAXREINTENTOS Then
             ''Throw New Exception("Máximo intentos permitidos: " + Configuracion.MAXREINTENTOS)
             db.EJECUCION_PROCESOS.Add(New EJECUCION_PROCESOS() With {
+                   .ESTATUS = Estatus,
                    .ERRORS = Message,
                    .FECHA_INICIO = Inicio,
                    .FECHA_FINAL = DateTime.Now,
@@ -62,18 +62,25 @@ Public Class Logger
     End Sub
     Sub SetEstatus(ByVal Estatus As Integer)
 
+        If Intentos + 1 > Me.Configuracion.MAXREINTENTOS Then
 
+            If Me.Configuracion.ESTATUS = 2 Then
+                SetEstatus(-1)
+            End If
 
-        If Me.Configuracion.ESTATUS = 1 Or Me.Configuracion.ESTATUS = 2 Then
-            Me.Configuracion.ESTATUS = Estatus
+            Throw New Exception("Numero de intentos permitidos: " + Me.Configuracion.MAXREINTENTOS.ToString())
+        End If
+
+        'If Me.Configuracion.ESTATUS = 1 Or Me.Configuracion.ESTATUS = 2 Then
+        Me.Configuracion.ESTATUS = Estatus
             db.Entry(Me.Configuracion).State = Entity.EntityState.Modified
             db.SaveChanges()
-        End If
+        ' End If
 
     End Sub
     Sub SetEstatus(ByVal Estatus As Integer, ByVal Message As String)
 
-        SetLog(Message)
+        SetLog(Estatus, Message)
 
         'If Me.Configuracion.ESTATUS = 1 Or Me.Configuracion.ESTATUS = 2 Then
         Me.Configuracion.ESTATUS = Estatus

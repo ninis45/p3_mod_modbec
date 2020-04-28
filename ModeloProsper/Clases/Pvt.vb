@@ -30,12 +30,7 @@ Public Class Pvt
     End Sub
     Function Execute() As Boolean
         Try
-            'Connect(ProgramPath, ArchivoPVT)
-            'DoCmd("PROSPER.SETUNITSYS(""Pemex"")")
 
-            ' DoCmd("PROSPER.OPENFILE=""" & ArchivoPVT & """")
-
-            'DoCmd("PROSPER.RESET(ALL)")
 
             DoSet("PROSPER.PVT.Input.Solgor", GOR)
             DoSet("PROSPER.PVT.Input.Api", API)
@@ -179,6 +174,9 @@ Public Class Pvt
             Next j
             DoSet("PROSPER.PVT.Input.PBcorr", IcorPRB)
             DoSet("PROSPER.PVT.Input.UOcorr", IcorVis)
+
+
+
             Return True
             'Disconnect()
         Catch ex As Exception

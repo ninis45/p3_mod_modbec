@@ -6,6 +6,14 @@ Imports ModeloCI
 Public Interface IModelo
 
 
+    <OperationContract()>
+    Function CountBy(ByVal Estatus As Integer) As Integer
+
+    <OperationContract()>
+    Function GetList(ByVal Estatus As Integer, Optional ByVal Page As Integer = 1) As List(Of String)
+
+    <OperationContract()>
+    Function Condiciones() As Dictionary(Of String, List(Of String))
 
     <OperationContract()>
     Function Monitor(ByRef OpenServer As String) As List(Of String)
@@ -22,6 +30,9 @@ Public Interface IModelo
     <OperationContract()>
     Function Execute(ByVal IdModPozo As String, ByVal User As String) As Boolean
 
+    <OperationContract()>
+    Function Reading(ByVal FileUpload As Byte(), ByVal FileName As String) As List(Of String)
+
     '<OperationContract()>
     'Function SensGas(ByVal IdModPozo As String, ByVal Qgi As Double, ByVal Pwh As Double, ByVal WC As Double) As List(Of Gas)
 
@@ -32,4 +43,9 @@ Public Interface IModelo
 
     <OperationContract()>
     Sub ShutDown()
+
+    <OperationContract()>
+    Sub Tester(ByVal Command As String)
+
+    
 End Interface

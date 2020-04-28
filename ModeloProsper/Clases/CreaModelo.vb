@@ -122,25 +122,27 @@ Public Class Crea
         Public ProgramPath As String  ' Localización del programa "Prosper"
         Public ArchivoPVT As String   ' Archivo donde se encuentra el PVT ajustado
 
-        Public Fluid As New MaxMinByte       '
-        Public PVTModel As New MaxMinByte    '
-        Public Separator As New MaxMinByte   '
-        Public Emulsion As New MaxMinByte    '
-        Public Hydrate As New MaxMinByte     '
-        Public WatVis As New MaxMinByte      '
-        Public VisMod As New MaxMinByte      '
-        Public FlowType As New MaxMinByte    '
-        Public WellType As New MaxMinByte    '
-        Public LiftMethod As New MaxMinByte  '
-        Public LiftType As New MaxMinByte    '
-        Public Predict As New MaxMinByte     '
-        Public TempModel As New MaxMinByte   '
-        Public RangeSystem As New MaxMinByte '
-        Public OutputRes As New MaxMinByte   '
-        Public Completion As New MaxMinByte  '
-        Public GravelPack As New MaxMinByte  '
-        Public InflowType As New MaxMinByte  '
-        Public GasConing As New MaxMinByte   '
+        'Datos generales
+        '========================================================
+        Public Fluid As New MaxMinInteger      '
+        Public PVTModel As New MaxMinInteger    '
+        Public Separator As New MaxMinInteger   '
+        Public Emulsion As New MaxMinInteger    '
+        Public Hydrate As New MaxMinInteger     '
+        Public WatVis As New MaxMinInteger      '
+        Public VisMod As New MaxMinInteger      '
+        Public FlowType As New MaxMinInteger    '
+        Public WellType As New MaxMinInteger    '
+        Public LiftMethod As New MaxMinInteger  '
+        Public LiftType As New MaxMinInteger    '
+        Public Predict As New MaxMinInteger     '
+        Public TempModel As New MaxMinInteger   '
+        Public RangeSystem As New MaxMinInteger '
+        Public OutputRes As New MaxMinInteger   '
+        Public Completion As New MaxMinInteger  '
+        Public GravelPack As New MaxMinInteger  '
+        Public InflowType As New MaxMinInteger  '
+        Public GasConing As New MaxMinInteger   '
 
 
 
@@ -160,6 +162,10 @@ Public Class Crea
         Public TRes As New MaxMinDouble      '
         Public RGA_Aforo As New MaxMinDouble '
         Public GLRate As New MaxMinDouble    '
+        Public Qg As New MaxMinDouble
+        Public Qw As New MaxMinDouble
+
+
         Public QgiMin As New MaxMinDouble    '
         Public QgiMax As New MaxMinDouble    '
 
@@ -170,7 +176,7 @@ Public Class Crea
 
         Public IPRMethod As New MaxMinByte    '
         Public Ptest As New MaxMinDouble      '
-        Public TotGor As New MaxMinDouble     '
+        Public TotGor As New MaxMinDouble     'GOR TOTAL DEL YACIMIENTO
         Public ResPerm As New MaxMinDouble    '
         Public Thickness As New MaxMinDouble  '
         Public Drainage As New MaxMinDouble   '
@@ -226,6 +232,7 @@ Public Class Crea
         Public NomCorr As String()            '
         Public NumCor As Integer()
         Public CorrVFP As Integer   '
+        Public CorrIndex As Integer
         Public NivMedDisp As New MaxMinDouble '
 
         Public NGrafVLPIPR As Integer     '
@@ -299,6 +306,9 @@ Public Class Crea
         Public Rango_MaxY_BEC As Double()
         Public Bombaaux_BEC As String
 
+        Public Property PumpHead As New MaxMinDouble
+        Public Property PumpRate As New MaxMinDouble
+
         'Public Qgi_Min As Double      ' MMpie3/día
         'Public Property Qgi_Max As Double      ' MMpie3/día
 
@@ -310,7 +320,27 @@ Public Class Crea
 
         'TMP 
         Public Property Qgi_afor As Double
-        Public Property Qliq_aforo As Double
+
+        'RESULTADO DE SENSIBILIDAD DE VARIABLES
+        '=================================================================
+        Public SensVars() As Integer
+        Public SensVarsVal As Dictionary(Of Integer, List(Of Double))
+        Public Property LiqRate As Double() 'Verificar si existe en la BD
+        Public GasRate() As Double
+        Public Property OilRate As Double()
+        Public Property WatRate As Double()
+        Public Property VLPpres As Double()
+
+        'Flags
+        '======================================================
+        Public Property FlagQuickLook As Integer
+        Public Property FlagVlpIpr As Integer
+        Public Property FlagSensWc As Integer
+        Public Property FlagPvt As Integer = 0
+        Public Property FlagTcc As Integer = 0
+        'Public Property FVlpIpr As Integer
+
+        Public Property TestIndex As Integer
 
         Public Pvt As Pvt
         Public Reset As Boolean = False
@@ -318,6 +348,20 @@ Public Class Crea
         Public Property Conected As Boolean
         Public Property Server As Object
         Public Property SaveFile As Boolean
+        Public Property SaveEquip As Boolean
+        Public Property Reading As Boolean
+
+        Public Property Equipment As Boolean 'Guardar datos del PVT hacia la base de datos
+        Public Property Errors As New List(Of String)
+
+        Public Property Bombas As Dictionary(Of Integer, BOMBA)
+
+
+        Public CartaX(5, 99) As Double
+        Public CartaY(5, 99) As Double
+        Public RangeX(3, 99) As Double
+        Public RangeY(3, 99) As Double
+
 
 #End Region
 
@@ -1604,6 +1648,292 @@ Public Class Crea
         ''' 
         Public Sub New()
 
+
+            Iniciar = 3
+            'PntIPR = NumResIPR    ' Número de puntos de la IPR
+            MsgErrDatos = ""
+            MsgErrCalc = ""
+            MsgAyuda = ""
+            MsgDiagnostico = ""
+
+            ' Agregar los mínimos y máximos
+
+            ' Fluido: 0 = Oil and Water
+            '         1 = Dry and Wet Gas
+            '         2 = Retrograde Condensate
+            Fluid.Nomb = "Tipo de fluido producido " : Fluid.Min = 0 : Fluid.Max = 2
+            ' PVTModel: 0 = Black Oil
+            '           1 = Equation of State
+            PVTModel.Nomb = "Modelo PVT " : PVTModel.Min = 0 : PVTModel.Max = 1
+            ' Separator: 0 = Single Stage Separator
+            '            1 = Two Stage Separator
+            Separator.Nomb = "Etapas de separación " : Separator.Min = 0 : Separator.Max = 1
+            ' Emulsion: 0 = No
+            '           1 = Emulsion + Pump Viscosity Correction
+            Emulsion.Nomb = "Manejo de emulsiones " : Emulsion.Min = 0 : Emulsion.Max = 1
+            ' Hydrate: 0 = Disable Warning
+            '          1 = Enable Warning
+            Hydrate.Nomb = "Habilitar alarmas en caso de tener presencia de hidratos " : Hydrate.Min = 0 : Hydrate.Max = 1
+            ' WatVis: 0 = Use Default Correlation
+            '         1 = Use Pressure Corrected Correlation
+            WatVis.Nomb = "Correlación para la viscosidad del agua " : WatVis.Min = 0 : WatVis.Max = 1
+            ' VisMod: 0 = Newtonian Fluid
+            '         1 = Non Newtonian Fluid
+            VisMod.Nomb = "Modelo de viscosidad " : VisMod.Min = 0 : VisMod.Max = 1
+            ' FlowType: 0 = Tubing Flow
+            '           1 = Annular Flow
+            FlowType.Nomb = "Flujo por la tubería de producción o por el Espacio Anular " : FlowType.Min = 0 : FlowType.Max = 1
+            ' WellType: 0 = Producer
+            '           1 = Inyector
+            '           2 = Water Inyector
+            WellType.Nomb = "Tipo de pozo (productor, inyector o inyector de agua " : WellType.Min = 0 : WellType.Max = 1
+            ' LiftMethod: 0 = None
+            '             1 = Gas Lift (Continous)
+            '             2 = Electrical Sumersible Pump
+            '             3 = Hydraulic Drive Downhole Pump
+            '             4 = Progressive Cavity Pump
+            '             5 = Coiled Tubing Gas Lift
+            '             6 = Diluent Injection
+            '             7 = Jet Pump
+            '             8 = MultiPhase Pump
+            '             9 = Sucker Rod Pump
+            '             10 = Gas Lift (Intermttent)
+            LiftMethod.Nomb = "Tipo de sistema artificial " : LiftMethod.Min = 0 : LiftMethod.Max = 10
+            ' LiftType: 0 = No Friction Loss In Annulus
+            '           1 = Friction Loss In Annulus
+            '           2 = Safety Equipment
+            LiftType.Nomb = "Considerar o no fricción en el espacio anular " : LiftType.Min = 0 : LiftType.Max = 2
+            ' Predict: 0 = Pressure Only
+            '          1 = Pressure and Temperature (offshore)
+            '          2 = Pressure and Temperature (on Land)        '
+            Predict.Nomb = "Predicción de presión y temperatura " : Predict.Min = 0 : Predict.Max = 2
+            ' TempModel: 0 = Rough Approximation
+            '            1 = Enthalpy Balance
+            '            2 = Improved Approximation
+            TempModel.Nomb = "Modelo de temperatura " : TempModel.Min = 0 : TempModel.Max = 2
+            ' RangeSystem: 0 = Full System
+            '              1 = Pipeline Only
+            RangeSystem.Nomb = "Cálculos en el sistema completo o únicamente en la línea de descarga " : RangeSystem.Min = 0 : RangeSystem.Max = 1
+            ' OutputRes: 0 = Show Calculating Data
+            '            1 = Hide Calculating Data
+            OutputRes.Nomb = "Mostrar o no los resultados calculados " : OutputRes.Min = 0 : OutputRes.Max = 1
+            ' Completion: 0 = Cased Hole
+            '             1 = Open hole
+            Completion.Nomb = "Terminación en agujero descubierto o en agujero entubado" : Completion.Min = 0 : Completion.Max = 4
+            ' GravelPack: 0 = None
+            '             1 = Gravel Pack
+            '             2 = Pre Packed Screen
+            '             3 = Wire Wrapped Screen
+            '             4 = Slotted Liner
+            GravelPack.Nomb = "Tipo de herramienta de control de arena " : GravelPack.Min = 0 : GravelPack.Max = 4
+            ' InflowType: 0 = Single Branch
+            '             1 = MultiLateral Well
+            InflowType.Nomb = "Tipo de IPR" : InflowType.Min = 0 : InflowType.Max = 1
+            ' GasConing: 0 = No
+            '            1 = Yes
+            GasConing.Nomb = "Considerar conificación de gas " : GasConing.Min = 0 : GasConing.Max = 1
+            ' IPRMethod: 0 = PI Entry
+            '            1 = Vogel
+            '            2 = Composite
+            '            3 = Darcy
+            '            4 = Fetkovich
+            '            5 = MultiRate Fetkovich 
+            '            6 = Jones
+            '            7 = MultiRate Jones
+            '            8 = Transient
+            '            9 = Hidraulically Fractured Well
+            '           10 = Horizontal Well- No Flow Boundaries
+            '           11 = Horizontal Well- Constant Pressure Upper Boundary
+            '           12 = MultiLayer Reservoir
+            '           13 = External Entry
+            '           14 = Horizontal Well- dP Friction Loss in Wellbore
+            '           15 = MultiLayer - dP LossIn WellBore
+            '           16 = SkinAide (ELF)
+            '           17 = Dual Porosity
+            '           18 = Horizontal Well - Transverse Vertical Fractures
+            '           19 = SPOT
+            IPRMethod.Nomb = "Modelo de cálculo de la IPR " : IPRMethod.Min = 0 : IPRMethod.Max = 19
+
+            ' Datos del yacimiento
+            ' Presión de Fondo Estática
+            PRes.Nomb = "Presión de Fondo Estática [kg/cm2] " : PRes.Min = 500 / 14.223 : PRes.Max = 7000 / 14.223   ' Valores en lb/pg2
+            ' Temperatura del Yacimiento
+            TRes.Nomb = "Temperatura del Yacimiento [oC]" : TRes.Min = (68 - 32) / 1.8 : TRes.Max = (400 - 32) / 1.8 ' Valores en oF
+            ' Porcentaje de agua en la capa
+            Wc.Nomb = "Porcentaje de agua producida [%]" : Wc.Min = 0 : Wc.Max = 99
+            ' Relación Gas Aceite
+            TotGor.Nomb = "Relación Gas Aceite Total (disuelto + libre) [m3/m3]" : TotGor.Min = 20 : TotGor.Max = 5000
+            ' Modelo de reducción de permeabilidad por compactación
+            ' 0: No
+            ' 1: Si
+            Compact.Nomb = "Emplear modelo de reducción de permeabilidad por compactación" : Compact.Min = 0 : Compact.Max = 1
+            ' Considerar las permeabilidades relativas
+            ' 0: No
+            ' 1: Si
+            IRELK.Nomb = "Considerar las permeabilidades relativas " : IRELK.Min = 0 : IRELK.Max = 1
+
+            'Datos del modelo PI
+            PI.Nomb = "Valor del Índice de Productividad" : PI.Min = 0.001 : PI.Max = 5000
+
+            ' Datos del modelo de Vogel
+
+            ' Producción de liquido
+            QTest.Nomb = "Producción de líquido [bl/dia]" : QTest.Min = 1 : QTest.Max = 30000
+            ' Presión de fondo fluyendo
+            Ptest.Nomb = "Presión de fondo fluyendo [kg/cm2]" : Ptest.Min = PRes.Min - 1 : Ptest.Max = PRes.Max - 1
+
+            ' Datos del modelo de Darcy
+
+            ' Daño Mecánico / Geometrico
+            ' 0: Enter Skin by Hand
+            ' 1: Loke
+            ' 2: MacLeod
+            ' 3: Karakas - Tariq
+            MGSkinMethod.Nomb = "Modelo de daño Mecánico / Geometrico" : MGSkinMethod.Min = 0 : MGSkinMethod.Max = 3
+            ' Daño por desviación y penetración parcial
+            ' 0: Cinco / Martín-Bronz
+            ' 1: Wong-Cliford
+            ' 2: Cinco (2) / Martín-Bronz
+            DPSkinMethod.Nomb = "Modelo de Daño por desviación y penetración parcial " : DPSkinMethod.Min = 0 : DPSkinMethod.Max = 2
+            ' Permeabilidad del yacimiento
+            ResPerm.Nomb = "Permeabilidad del yacimiento [md]" : ResPerm.Min = 1 : ResPerm.Max = 5000
+            ' Espesor del yacimiento
+            Thickness.Nomb = "Espesor del yacimiento [m]" : Thickness.Min = 1 : Thickness.Max = 50
+            ' Área de drene
+            Drainage.Nomb = "Área de drene [m2]" : Drainage.Min = 100 : Drainage.Max = 5000
+            ' Factor de forma
+            Dietz.Nomb = "Factor de forma [adim]" : Dietz.Min = 0.008 : Dietz.Max = 32
+            ' Radio del pozo
+            WBR.Nomb = "Radio del pozo [pg]" : WBR.Min = 3.5 : WBR.Max = 13
+            ' Factor de daño total
+            Skin.Nomb = "Factor de daño total [adim]" : Skin.Min = -10 : Skin.Max = 10
+
+
+            ' Datos del BNC
+
+            ' Emplear RGIL o Qgi
+            '      0: Usar RGIL
+            '      1: Usar Qgi
+            Entry.Nomb = "Emplear RGIL o Qgi " : Entry.Min = 0 : Entry.Max = 1
+            ' Método de cálculo del BN.
+            ' 0: Profundidad de Inyección Fija
+            ' 1: Profundidad de Inyección Optima
+            ' 2: Especificar la profundidad de las válvulas
+            Method.Nomb = "Método de cálculo del BNC" : Method.Min = 0 : Method.Max = 2
+            ' Densidad del gas de bombeo neumático
+            Gravity.Nomb = "Densidad del gas de bombeo neumático " : Gravity.Min = 0.65 : Gravity.Max = 0.85
+            ' % Mol de H2S
+            H2S.Nomb = "% Mol de H2S " : H2S.Min = 0 : H2S.Max = 30
+            ' % Mol de CO2
+            CO2.Nomb = "% Mol de CO2 " : CO2.Min = 0 : CO2.Max = 30
+            ' % Mol de N2
+            N2.Nomb = "% Mol de N2 " : N2.Min = 0 : N2.Max = 30
+            ' Gasto de gas de inyección mmpcd
+            GLRiny.Nomb = "Gasto de gas de inyección mmpcd" : GLRiny.Min = 0 : GLRiny.Max = 7
+            ' Relación gas inyectado líquido m3/m3
+            GLRate.Nomb = "Relación gas inyectado líquido [m3/m3] " : GLRate.Min = 0 : GLRate.Max = 50
+            ' Profundidad de la válvula de inyección
+            ValveDepth.Nomb = "Profundidad de la válvula de inyección [m]" : ValveDepth.Min = 100 : ValveDepth.Max = 5000
+            ' Diametro de la válvula de BNC
+            DiamValBNC.Nomb = "Diámetro de la válvula de BNC [pg]" : DiamValBNC.Min = 8 / 64 : DiamValBNC.Max = 3 / 4
+            ' Datos para el ajuste
+            ' Presión en la cabeza del pozo
+            THPres.Nomb = "Presión en la cabeza del pozo [kg/cm2] " : THPres.Min = 3 : THPres.Max = 30
+            ' Temperatura en la cabeza del pozo (Fluyendo)
+            THTemp.Nomb = "Temperatura en la cabeza del pozo (Fluyendo) [oC] " : THTemp.Min = 30 : THTemp.Max = 130
+            ' RGA del aforo
+            RGA_Aforo.Nomb = "RGA del aforo m3/m3 " : RGA_Aforo.Min = 30 : RGA_Aforo.Max = 5000
+            ' Presion en la TR (BNC)
+            TRPres.Nomb = "Presión en la TR (BNC) [kg/cm2] " : TRPres.Min = 0 : TRPres.Max = 5000
+            ' Gatos de Aceite BPD
+            Qo.Nomb = "Gasto de Aceite [STBPD]" : Qo.Min = 0 : Qo.Max = 100000
+
+
+            Qg.Nomb = "Gasto de Gas " : Qg.Min = 0 : Qg.Max = 100000
+            Qw.Nomb = "Gasto de Agua" : Qw.Min = 0 : Qw.Max = 100000
+            ' Gasto de Gas de inyección de BN mínimo
+            QgiMin.Nomb = "Gasto de Gas de inyección de BN mínimo [MMSCFPD]" : QgiMin.Min = 0 : QgiMin.Max = 20
+            ' Gasto de Gas de inyección de BN máximo
+            QgiMin.Nomb = "Gasto de Gas de inyección de BN máximo [MMSCFPD]" : QgiMax.Min = 0 : QgiMax.Max = 20
+            ' Numero de Datos de Estado Mecánico
+            NumDatEdoMec.Nomb = "Número de datos de estado Mecánico" : NumDatEdoMec.Min = 0 : NumDatEdoMec.Max = 20
+            ' Tipo de accesorio o tubería en el estado mecánico
+            ' 0=Ningúno
+            ' 1=Tubing
+            ' 2=SSSV
+            ' 3=Restriction
+            ' 4=Cassing
+            DType.Nomb = "Tipo de accesorio o tubería en el estado mecánico conteniedo hasta 20 datos" : DType.Min = 0 : DType.Max = 4
+            ' Profundidades del estado mecánico
+            Depth.Nomb = "Profundidad del estado Mecanico [mD], hasta 20 datos" : Depth.Min = 0 : Depth.Max = 20000
+            ' Diámetro Interior de la Tuberías
+            TID.Nomb = "Diámetro Interior de las tuberías de producción del estado mecánico [pulgadas], hasta 20 datos" : TID.Min = 0 : TID.Max = 30
+            'Coeficiente Rugosidad interior de la tubería de producción
+            TIR.Nomb = "Coeficiente de rugosidad interior de las tuberías de producción del estado mecánico [pulgadas], hasta 20 datos" : TIR.Min = 0 : TIR.Max = 1
+            ' Diametro Exterior de la tuberías de producción
+            TOD.Nomb = "Diámetro Exterior de las tubuerías de producción del estado mecánico [pulgadas], hasta 20 datos" : TOD.Min = 0 : TOD.Max = 36
+            'Coeficiente Rugosidad exterior de la tubería de producción
+            TOR.Nomb = "Coeficiente de rugosidad exterior de las tuberías de producción del estado mecánico [pulgadas], hasta 20 datos" : TOR.Min = 0 : TOR.Max = 1
+            'Diámetro interno de la tubería de revestimiento
+            CID.Nomb = "Diámetro interno de la tubería de revestimiento del estado mecánico [pulgadas], hasta 20 datos" : CID.Min = 0 : CID.Max = 36
+            'Coeficiente de rugosidad interno de la tubería de revestimiento
+            CIR.Nomb = "Coeficiente de rugosidad interno de la tubería de revestimiento del estado mecánico [pulgadas], hasta 20 datos" : CIR.Min = 0 : CIR.Max = 1
+            'Numero de Datos de la trayectoria
+            NumDatTrayecto.Nomb = "Número de datos de la trayectoria del pozo" : NumDatTrayecto.Min = 2 : NumDatTrayecto.Max = 20
+            'Habilitador de datos de la trayectoria
+            RDEnable.Nomb = "Habilita de datos de trayectoria del pozo [adimensional], hasta 20 datos" : RDEnable.Min = 0 : RDEnable.Max = 1
+            'Datos de trayectoria del pozo en  metros desarrollados
+            RDMd.Nomb = "Datos de metros desarrollados [mD], hasta 20 datos" : RDMd.Min = 0 : RDMd.Max = 20000
+            'Datos de trayectoria del pozo en metros verticales
+            RDTvd.Nomb = "Datos de trayectoria del pozo en metros verticales [mV], hasta 20 datos" : RDTvd.Min = 0 : RDTvd.Max = 20000
+            'Número de datos del perfil de temperatura en el pozo
+            NumDatTemp.Nomb = "Número de datos del perfil de temperatura del pozo" : NumDatTemp.Min = 2 : NumDatTemp.Max = 20
+            'Coeficiente de Transferencia de Calor Inicial
+            Htc.Nomb = "Coeficiente de Transferencia de Calor Inicial [W/m2/oK] " : Htc.Min = 1 : Htc.Max = 8
+            'Profundidad del perfil de temperatura en metros desarrollados
+            PTMd.Nomb = "Profundidad del perfil de temperatura en metros desarrollados [mD], hasta 20 datos" : PTMd.Min = 0 : PTMd.Max = 20000
+            'Temperatura del perfil de temperatura en °C
+            PTTmp.Nomb = "Temperatura del perfil de temperatura [°C], hasta 20 datos" : PTTmp.Min = 0 : PTTmp.Max = 300
+            'Nivel medio del intervalo disparado
+            NivMedDisp.Nomb = "Nivel medio del intervalo Disparado [mD]" : NivMedDisp.Min = 0 : NivMedDisp.Max = 20000
+
+            'Datos de entrada exclusivamente de BEC
+            'Frecuencia mínima de BEC
+            FrecMin.Nomb = "Frecuencia mínima de la bomba BEC [Hz]" : FrecMin.Min = 10 : FrecMin.Min = 200
+            'Frecuencia máxima de BEC
+            FrecMax.Nomb = "Frecuencia máxima de la bomba BEC [Hz]" : FrecMax.Min = 10 : FrecMax.Min = 200
+            ' Profundidad del BEC
+            Prof_BEC.Nomb = "Profundidad del BEC [mD]" : Prof_BEC.Min = 0 : Prof_BEC.Max = 20000
+            'Frecuencia de operación del BEC
+            Frec_BEC.Nomb = "Frecuencia de operación del BEC [Hz]" : Frec_BEC.Min = 10 : Frec_BEC.Max = 200
+            ' Diámetro exterior mayor del BEC
+            ODMax_BEC.Nomb = "Diámetro exterior mayor del BEC [pulgadas]" : ODMax_BEC.Min = 1 : ODMax_BEC.Max = 20
+            'Longitud del cable del BEC
+            LongCable_BEC.Nomb = "Longitud del cable BEC [m]" : LongCable_BEC.Min = 0 : LongCable_BEC.Max = 20000
+            'Eficiencia del separador del Gas
+            EfiSepGas_BEC.Nomb = "Eficiencia del separador de gas del BEC [procentaje]" : EfiSepGas_BEC.Min = 0 : EfiSepGas_BEC.Max = 100
+            'Etapas de la bomba BEC
+            Etapas_BEC.Nomb = "Etapas de la bomba BEC" : Etapas_BEC.Min = 1 : Etapas_BEC.Max = 1000
+            'Voltaje en la superficie para la bomba BEC
+            VoltSup_BEC.Nomb = "Voltaje en superficie para el BEC [Volts]" : VoltSup_BEC.Min = 1 : VoltSup_BEC.Max = 20000
+            'Grado de desgaste del BEC
+            Desgaste_BEC.Nomb = "Grado de desgaste del BEC [fracción]" : Desgaste_BEC.Min = 0 : Desgaste_BEC.Max = 1
+            'Modelo de reducción del gas
+            '0= ninguno
+            ReducGas_BEC.Nomb = "Modelo de reducción del gas" : ReducGas_BEC.Min = 0 : ReducGas_BEC.Max = 1
+            'Bomba para el BEC, el cual permite selección una bomba de 0 hasta el 568 de catálogo de las bombas BEC
+            Bomba_BEC.Nomb = "Bomba BEC de 0 hasta 568 del catálogo de bombas" : Bomba_BEC.Min = 0 : Bomba_BEC.Max = 568
+            'Motor para el BEC, el cual permite selección de un motor de 0 hasta el 810 del catálogo de motores BEC
+            Motor_BEC.Nomb = "Motor BEC de 0 hasta 810 del catálogo de motores" : Motor_BEC.Min = 0 : Motor_BEC.Max = 810
+            'Cable para el BEC, el cual permite selección de un cable de 0 hasta el 12 del catálogo de cables BEC
+            Cable_BEC.Nomb = "Cable BEC de 0 hasta 12 del catálogo de cables" : Cable_BEC.Min = 0 : Cable_BEC.Max = 12
+            'Presión succión de la bomba BEC
+            PreSuc_BEC.Nomb = "Presión de Succión de la Bomba BEC [kg/cm2]" : PreSuc_BEC.Min = 0 : PreSuc_BEC.Max = 20000
+            'Corriente de operación en superficie del BEC
+            Corriente_BEC.Nomb = "Corriente de operación del BEC [Amperes]" : Corriente_BEC.Min = 0 : Corriente_BEC.Max = 20000
+            'Potencia de operación en superficie del BEC
+            Potencia_BEC.Nomb = "Potencia de operación del BEC [HP]" : Potencia_BEC.Min = 0 : Potencia_BEC.Max = 20000
+            PreDes_BEC.Nomb = "Presión de Descarga de la Bomba BEC [kg/cm2]" : PreDes_BEC.Min = 0 : PreDes_BEC.Max = 20000
         End Sub
         Public Sub New(ByVal NDatEdoMec As Integer, ByVal NDatTrayecto As Integer, ByVal NDatTemp As Integer)
 
@@ -1619,12 +1949,12 @@ Public Class Crea
             Try
                 If NDatEdoMec > 0 Then
                     NumDatEdoMec.Val = NDatEdoMec
-                    ReDim Label(NDatEdoMec), DType.Val(NDatEdoMec), Depth.Val(NDatEdoMec),
-                                              TID.Val(NDatEdoMec), TIR.Val(NDatEdoMec), TOD.Val(NDatEdoMec), TOR.Val(NDatEdoMec),
-                                              CID.Val(NDatEdoMec), CIR.Val(NDatEdoMec)
+                    ReDim Label(NDatEdoMec), DType.Val(NDatEdoMec - 1), Depth.Val(NDatEdoMec - 1),
+                                              TID.Val(NDatEdoMec - 1), TIR.Val(NDatEdoMec - 1), TOD.Val(NDatEdoMec - 1), TOR.Val(NDatEdoMec - 1),
+                                              CID.Val(NDatEdoMec - 1), CIR.Val(NDatEdoMec - 1)
                     Iniciar += 1
                 Else
-                    MsgSub &= GetFrmt("Es necesario tener cuando menos una tubería", 2)
+                    Throw New Exception("Es necesario tener cuando menos una tubería")
                 End If
 
                 If NDatTrayecto > 1 Then
@@ -1634,16 +1964,16 @@ Public Class Crea
                     ReDim RDTvd.Val(NDatTrayecto)
                     Iniciar += 1
                 Else
-                    MsgSub &= GetFrmt("Es necesario tener cuando menos dos datos de la trayectoria del pozo", 2)
+                    Throw New Exception("Es necesario tener cuando menos dos datos de la trayectoria del pozo")
                 End If
 
                 If NDatTemp > 1 Then
                     NumDatTemp.Val = NDatTemp
-                    ReDim PTMd.Val(NDatTemp)
-                    ReDim PTTmp.Val(NDatTemp)
+                    ReDim PTMd.Val(NDatTemp - 1)
+                    ReDim PTTmp.Val(NDatTemp - 1)
                     Iniciar += 1
                 Else
-                    MsgSub &= GetFrmt("Es necesario tener cuando menos dos datos de temperatura en el pozos", 2)
+                    Throw New Exception("Es necesario tener cuando menos dos datos de temperatura en el pozos")
                 End If
 
                 'PntIPR = NumResIPR    ' Número de puntos de la IPR
@@ -1980,6 +2310,17 @@ Public Class Crea
                         Pvt.Execute()
                     Else
                         DoCmd("PROSPER.SETUNITSYS(""Pemex"")")
+
+
+                        If Equipment Then
+                            Pvt = New Pvt() With
+                            {
+                                .API = DoGet("PROSPER.PVT.Input.Api"),
+                                .GOR = DoGet("PROSPER.PVT.Input.Solgor"),
+                                .Salinidad = DoGet("PROSPER.PVT.Input.Watsal"),
+                                .Drg = DoGet("PROSPER.PVT.Input.Grvgas")
+                            }
+                        End If
                     End If
 
 
@@ -2048,20 +2389,25 @@ Public Class Crea
                         End If
                     End If
 
-                    ' Se actualizan algunos cambios
-                    'DoCmd("PROSPER.Refresh")
 
                     ' Se envian los datos a Prosper
                     EdoMec_Dat()
                     RegDesv()
                     PerfilTemp()
-                    TubDescarga(PTTmp.Val(0))
+                    If SaveEquip = False Then
+                        TubDescarga(PTTmp.Val(0))
+                        NivMedDisp.Val = Depth.Val(NumDatEdoMec.Val - 1)
+                    Else
+
+                        NivMedDisp.Val = DoGet("PROSPER.ANL.VMT.DATA[0].GDEPTH")
+                    End If
 
                     ' Nivel medio de los disparos
-                    NivMedDisp.Val = Depth.Val(NumDatEdoMec.Val - 1)
+
+                    'NivMedDisp.Val = IIf(SaveEquip, DoGet("PROSPER.ANL.VMT.DATA[0].GDEPTH"), Depth.Val(NumDatEdoMec.Val - 1))
 
                     ' Cálculo de la IPR
-                    If Yacimiento() Then Exit Function
+                    If Yacimiento() = False Then Exit Function
 
                     ' LiftMethod: 0 = None
                     '             1 = Gas Lift (Continous)
@@ -2079,15 +2425,16 @@ Public Class Crea
                         Case 1
                             Configura_BN()  '--------------------->>>>>>>>>>
                             ' Comparación de correlaciones y Ajuste de VLP/IPR
-                            If Compara_Correlaciones_BN() Then Exit Function
+                            If Compara_Correlaciones_BN() = False Then Exit Function
                             ' Ajuste de las correlaciones
                             If VLPIPR() = False Then Exit Function
                             ReDim NomVLPIPR(1)
-                            NomVLPIPR(1) = "IPR" : NomVLPIPR(0) = "VLP, " & NomCorr(0)
+                            NomVLPIPR(1) = "IPR" : NomVLPIPR(0) = "VLP, " & NomCorr(CorrIndex)
                             CorrVFP = NumCorrVFP(CorrVFP)
-                            If Sensibilidad_BN() Then Exit Function
+                            If Sensibilidad_BN() = False Then Exit Function
                             If QuickLook_BN() Then Exit Function
                             If SensAgua_BN() Then Exit Function
+                            If SaveEquip AndAlso Rate() = False Then Exit Function
                         Case 2
                             Configura_BEC()  '--------------------->>>>>>>>>>
                             ' Comparación de correlaciones y Ajuste de VLP/IPR
@@ -2103,6 +2450,7 @@ Public Class Crea
                             If Carta_BEC() Then Exit Function
                             'If Diseño_BEC() Then Exit Function
                             If VLPIPR() = False Then Exit Function
+
                         Case Else
                             Throw New Exception("No existe el Sistema Artificial de Producción")
                     End Select
@@ -2122,6 +2470,191 @@ Public Class Crea
             Return IErr
         End Function
 
+        Public Function Execute() As Boolean
+            Try
+
+
+                Me.Server = Connect()
+                DoCmd("PROSPER.OPENFILE=""" & ArchivoPVT & """")
+
+                If Pvt IsNot Nothing Then
+                    DoCmd("PROSPER.RESET(ALL)")
+                    DoCmd("PROSPER.SETUNITSYS(""Pemex"")")
+                    Pvt.Execute()
+                    FlagPvt = DoGet("PROSPER.PVT.MATCH.DATA.COUNT")
+                Else
+                    FlagPvt = DoGet("PROSPER.PVT.MATCH.DATA.COUNT")
+
+                    If FlagPvt > 0 Then
+
+                        'If Equipment Then
+                        Pvt = New Pvt() With
+                        {
+                                .API = DoGet("PROSPER.PVT.Input.Api"),
+                                .GOR = DoGet("PROSPER.PVT.Input.Solgor"),
+                                .Salinidad = DoGet("PROSPER.PVT.Input.Watsal"),
+                                .Drg = DoGet("PROSPER.PVT.Input.Grvgas")
+                        }
+                        'Else
+                        DoCmd("PROSPER.SETUNITSYS(""Pemex"")")
+                        'End If
+                    End If
+
+                End If
+
+
+
+
+                    'LECTURA Y ESCRITURA
+                    '===============================================
+                    DatosGenerales()
+
+                ' Nota importante para el manejo de los volúmenes de gas:
+                '
+                ' Qg libre  = Qg aforo - Qg Disuelto(PVT)
+                ' RGA libre = (Qg libre * 1E6)/ (Qo * 5.615)
+                ' m3/m3     = (pie3/dia) / (bl/dia)
+                '
+                ' Siempre considerar:
+                '                    
+                ' Qg aforo >= Qg Disuelto(PVT) de lo contrario tomar:
+                ' Qg aforo = Qg Disuelto(PVT)
+
+                ' Gasto de aceite (QTest es el gasto de líquido)
+                Qo.Val = (QTest.Val * (100 - Wc.Val)) / 100
+                ' RGA del PVT @ Pws y Tws
+                GOR_PTy = RGA_PVT_PwsyTws()
+                'GOR_PTy = RGA_PVT_PwsyTws(PRes, TRes)
+                ' Gasto de gas disuelto @ Pws y Tws (MMpie3/día)
+                Qg_PTy = (GOR_PTy * Qo.Val * 5.615) / 1000000
+                ' Gasto de gas del aforo (MMpie3/día)
+                Qg_Aforo = (5.615 * RGA_Aforo.Val * Qo.Val) / 1000000
+                ' Relacion Gas Libre Aceite
+                GORFree = 0 '((Qg_Aforo - Qg_PTy) * 1000000) / (Qo.Val * 5.615)
+                ' Gasto de gas libre (MMpie3/día)
+                Qg_Libre = (GORFree * Qo.Val * 5.615) / 1000000
+                '  Gasto de gas total (MMpie3/día)
+                Qg_Total = Qg_Libre + Qg_PTy
+                ' Relación gas aceite total
+                GOR_Total = GOR_PTy + GORFree
+
+                ' RGIL ((Qgi/QL) * 1e6)/5.615
+                GLRiny.Val = GLRate.Val / QTest.Val * 1000000 / 5.615
+                GrvGas = DoGet("PROSPER.PVT.INPUT.GRVGAS")
+                API = DoGet("PROSPER.PVT.INPUT.API")
+                Dro = 141.5 / (131.5 + API)
+
+
+                EdoMec_Dat()
+                RegDesv()
+                PerfilTemp()
+
+                If Equipment = False Then
+                    TubDescarga(PTTmp.Val(0))
+                    NivMedDisp.Val = Depth.Val(NumDatEdoMec.Val - 1)
+                    'Else
+                    'Se deshabilito se encuentra en la comparacion de correlaciones de los TEST
+                    ' NivMedDisp.Val = DoGet("PROSPER.ANL.VMT.DATA[0].GDEPTH") 'Valor de Test en VLP / IPR
+                End If
+
+                ' Nivel medio de los disparos
+
+                'NivMedDisp.Val = IIf(SaveEquip, DoGet("PROSPER.ANL.VMT.DATA[0].GDEPTH"), Depth.Val(NumDatEdoMec.Val - 1))
+
+                ' Cálculo de la IPR
+                If Yacimiento() = False Then Exit Function
+
+                ' LiftMethod: 0 = None
+                '             1 = Gas Lift (Continous)
+                '             2 = Electrical Sumersible Pump
+                '             3 = Hydraulic Drive Downhole Pump
+                '             4 = Progressive Cavity Pump
+                '             5 = Coiled Tubing Gas Lift
+                '             6 = Diluent Injection
+                '             7 = Jet Pump
+                '             8 = MultiPhase Pump
+                '             9 = Sucker Rod Pump
+                '             10 = Gas Lift (Intermttent)
+                NumCorr.Val = 10 ' SE MOVIO A DATOS GENERALE
+                Select Case LiftMethod.Val
+                    Case 1
+                        Configura_BN()
+                        ' Comparación de correlaciones y Ajuste de VLP/IPR
+
+                        If Reading = False Then
+                            If Compara_Correlaciones_BN() = False Then Exit Function
+                            '' Ajuste de las correlaciones
+                            If VLPIPR() = False Then Exit Function
+                            ReDim NomVLPIPR(1)
+                            NomVLPIPR(1) = "IPR" : NomVLPIPR(0) = "VLP, " + NomCorr(CorrIndex)
+                            CorrVFP = NumCorrVFP(CorrVFP)
+                            If Sensibilidad_BN() = False Then Exit Function
+                            If QuickLook_BN() = False Then Exit Function
+                            If SensAgua_BN() = False Then Exit Function
+                        End If
+
+                    Case 2
+                        Configura_BEC()  '--------------------->>>>>>>>>>
+
+                        If Reading = False Then
+                            ' Comparación de correlaciones y Ajuste de VLP/IPR
+                            If Compara_Correlaciones_BEC() = False Then Exit Function
+                            ' Ajuste de las correlaciones
+
+                            ReDim NomVLPIPR(1)
+                            NomVLPIPR(1) = "IPR" : NomVLPIPR(0) = "VLP, " + NomCorr(CorrIndex)
+                            CorrVFP = NumCorrVFP(CorrVFP)
+                            If Sensibilidad_BEC() = False Then Exit Function
+                            If QuickLook_BEC() = False Then Exit Function
+                            If SensAgua_BEC() = False Then Exit Function
+                            If Carta_BEC() = False Then Exit Function
+                            If VLPIPR() = False Then Exit Function
+                        End If
+                    Case Else
+                        Throw New Exception("No hay definicion del SAP")
+                End Select
+
+
+
+                If SaveFile = True Then
+                    DoCmd("PROSPER.SAVEFILE")
+                End If
+
+                Disconnect()
+
+
+
+                'VALIDACION DE DATOS
+                '==================================================
+                'Validating()
+
+
+
+                'Disconnect()
+                Return True
+            Catch ex As Exception
+                Disconnect()
+                Throw New Exception("ModeloProsper: " + ex.Message)
+                Return False
+            End Try
+        End Function
+
+
+        Public Function ValidMinMaxDouble(ByVal MinMax As MaxMinDouble)
+            If MinMax.Val >= MinMax.Min And MinMax.Val <= MinMax.Max Then
+                Return True
+            Else
+                Return False
+            End If
+        End Function
+        Public Function ValidMinMaxInt(ByVal MinMax As MaxMinInteger)
+            If MinMax.Val >= MinMax.Min And MinMax.Val <= MinMax.Max Then
+                Return True
+            Else
+                Return False
+            End If
+        End Function
+
 
 
 
@@ -2132,126 +2665,251 @@ Public Class Crea
         ''' </summary>
         Private Sub DatosGenerales()
 
-            'If Reset Then
+            Try
 
-            'End If
+                If Equipment Then
+                    '
+                    ' Fluido: 0 = Oil and Water
+                    '         1 = Dry and Wet Gas
+                    '         2 = Retrograde Condensate
+                    '
+                    Fluid.Val = DoGet("PROSPER.SIN.SUM.Fluid")
+                    '
+                    ' PVTModel: 0 = Black Oil
+                    '           1 = Equation of State
+                    '
+                    PVTModel.Val = DoGet("PROSPER.SIN.SUM.PVTModel")
+                    '
+                    ' Separator: 0 = Single Stage Separator
+                    '            1 = Two Stage Separator
+                    '
+                    Separator.Val = DoGet("PROSPER.SIN.SUM.Separator")
+                    '
+                    ' Emulsion: 0 = No
+                    '           1 = Emulsion + Pump Viscosity Correction
+                    '
+                    Emulsion.Val = DoGet("PROSPER.SIN.SUM.Emulsion")
+                    '
+                    ' Hydrate: 0 = Disable Warning
+                    '          1 = Enable Warning
+                    '
+                    Hydrate.Val = DoGet("PROSPER.SIN.SUM.Hydrate")
+                    '
+                    ' WatVis: 0 = Use Default Correlation
+                    '         1 = Use Pressure Corrected Correlation
+                    '
+                    WatVis.Val = DoGet("PROSPER.SIN.SUM.WatVis")
+                    '
+                    ' VisMod: 0 = Newtonian Fluid
+                    '         1 = Non Newtonian Fluid
+                    '
+                    VisMod.Val = DoGet("PROSPER.SIN.SUM.VisMod")
+                    '
+                    ' FlowType: 0 = Tubing Flow
+                    '           1 = Annular Flow
+                    '
+                    FlowType.Val = DoGet("PROSPER.SIN.SUM.FlowType")
+                    '
+                    ' WellType: 0 = Producer
+                    '           1 = Inyector
+                    '           2 = Water Inyector
+                    '
+                    WellType.Val = DoGet("PROSPER.SIN.SUM.WellType")
+                    '
+                    ' LiftMethod: 0 = None
+                    '             1 = Gas Lift (Continous)
+                    '             2 = Electrical Sumersible Pump
+                    '             3 = Hydraulic Drive Downhole Pump
+                    '             4 = Progressive Cavity Pump
+                    '             5 = Coiled Tubing Gas Lift
+                    '             6 = Diluent Injection
+                    '             7 = Jet Pump
+                    '             8 = MultiPhase Pump
+                    '             9 = Sucker Rod Pump
+                    '             10 = Gas Lift (Intermttent)
+                    '
+                    LiftMethod.Val = DoGet("PROSPER.SIN.SUM.LiftMethod")
+                    '
+                    ' LiftType: 0 = No Friction Loss In Annulus
+                    '           1 = Friction Loss In Annulus
+                    '           2 = Safety Equipment
+                    '
+                    LiftType.Val = DoGet("PROSPER.SIN.SUM.LiftType[1]")
 
-            '
-            ' Fluido: 0 = Oil and Water
-            '         1 = Dry and Wet Gas
-            '         2 = Retrograde Condensate
-            '
-            DoSet("PROSPER.SIN.SUM.Fluid", Fluid.Val)
-            '
-            ' PVTModel: 0 = Black Oil
-            '           1 = Equation of State
-            '
-            DoSet("PROSPER.SIN.SUM.PVTModel", PVTModel.Val)
-            '
-            ' Separator: 0 = Single Stage Separator
-            '            1 = Two Stage Separator
-            '
-            DoSet("PROSPER.SIN.SUM.Separator", Separator.Val)
-            '
-            ' Emulsion: 0 = No
-            '           1 = Emulsion + Pump Viscosity Correction
-            '
-            DoSet("PROSPER.SIN.SUM.Emulsion", Emulsion.Val)
-            '
-            ' Hydrate: 0 = Disable Warning
-            '          1 = Enable Warning
-            '
-            DoSet("PROSPER.SIN.SUM.Hydrate", Hydrate.Val)
-            '
-            ' WatVis: 0 = Use Default Correlation
-            '         1 = Use Pressure Corrected Correlation
-            '
-            DoSet("PROSPER.SIN.SUM.WatVis", WatVis.Val)
-            '
-            ' VisMod: 0 = Newtonian Fluid
-            '         1 = Non Newtonian Fluid
-            '
-            DoSet("PROSPER.SIN.SUM.VisMod", VisMod.Val)
-            '
-            ' FlowType: 0 = Tubing Flow
-            '           1 = Annular Flow
-            '
-            DoSet("PROSPER.SIN.SUM.FlowType", FlowType.Val)
-            '
-            ' WellType: 0 = Producer
-            '           1 = Inyector
-            '           2 = Water Inyector
-            '
-            DoSet("PROSPER.SIN.SUM.WellType", WellType.Val)
-            '
-            ' LiftMethod: 0 = None
-            '             1 = Gas Lift (Continous)
-            '             2 = Electrical Sumersible Pump
-            '             3 = Hydraulic Drive Downhole Pump
-            '             4 = Progressive Cavity Pump
-            '             5 = Coiled Tubing Gas Lift
-            '             6 = Diluent Injection
-            '             7 = Jet Pump
-            '             8 = MultiPhase Pump
-            '             9 = Sucker Rod Pump
-            '             10 = Gas Lift (Intermttent)
-            '
-            DoSet("PROSPER.SIN.SUM.LiftMethod", LiftMethod.Val)
-            '
-            ' LiftType: 0 = No Friction Loss In Annulus
-            '           1 = Friction Loss In Annulus
-            '           2 = Safety Equipment
-            '
-            DoSet("PROSPER.SIN.SUM.LiftType[1]", LiftType.Val)
+                    ''Innnecesarios
 
-            DoSet("PROSPER.SIN.SUM.Company", Company)
-            DoSet("PROSPER.SIN.SUM.Field", Field)
-            DoSet("PROSPER.SIN.SUM.Location", Locations)
-            DoSet("PROSPER.SIN.SUM.Well", Well)
-            DoSet("PROSPER.SIN.SUM.Platform", Platform)
-            DoSet("PROSPER.SIN.SUM.Analyst", Analyst)
-            DoSet("PROSPER.SIN.SUM.Date", DatGenDate)
-            DoSet("PROSPER.Sin.Sum.Comments", Comenta)
+                    ''DoSet("PROSPER.SIN.SUM.Company", Company)
+                    ''DoSet("PROSPER.SIN.SUM.Field", Field)
+                    ''DoSet("PROSPER.SIN.SUM.Location", Locations)
+                    ''DoSet("PROSPER.SIN.SUM.Well", Well)
+                    ''DoSet("PROSPER.SIN.SUM.Platform", Platform)
+                    ''DoSet("PROSPER.SIN.SUM.Analyst", Analyst)
+                    ''DoSet("PROSPER.SIN.SUM.Date", DatGenDate)
+                    ''DoSet("PROSPER.Sin.Sum.Comments", Comenta)
 
-            '
-            ' Predict: 0 = Pressure Only
-            '          1 = Pressure and Temperature (offshore)
-            '          2 = Pressure and Temperature (on Land)        '
-            DoSet("PROSPER.SIN.SUM.Predict", Predict.Val)
-            '
-            ' TempModel: 0 = Rough Approximation
-            '            1 = Enthalpy Balance
-            '            2 = Improved Approximation
-            DoSet("PROSPER.SIN.SUM.TempModel", TempModel.Val)
-            '
-            ' RangeSystem: 0 = Full System
-            '              1 = Pipeline Only
-            DoSet("PROSPER.SIN.SUM.Range", RangeSystem.Val)
-            '
-            ' OutputRes: 0 = Show Calculating Data
-            '            1 = Hide Calculating Data
-            DoSet("PROSPER.SIN.SUM.Output", OutputRes.Val)
-            '
-            ' Completion: 0 = Cased Hole
-            '             1 = Open hole
-            DoSet("PROSPER.SIN.SUM.Completion", Completion.Val)
-            '
-            ' GravelPack: 0 = None
-            '             1 = Gravel Pack
-            '             2 = Pre Packed Screen
-            '             3 = Wire Wrapped Screen
-            '             4 = Slotted Liner
-            DoSet("PROSPER.SIN.SUM.GravelPack", GravelPack.Val)
-            '
-            ' InflowType: 0 = Single Branch
-            '             1 = MultiLateral Well
-            DoSet("PROSPER.SIN.SUM.InflowType", InflowType.Val)
-            '
-            ' GasConing: 0 = No
-            '            1 = Yes
-            DoSet("PROSPER.SIN.SUM.GasConing", GasConing.Val)
+                    '
+                    ' Predict: 0 = Pressure Only
+                    '          1 = Pressure and Temperature (offshore)
+                    '          2 = Pressure and Temperature (on Land)        '
+                    Predict.Val = DoGet("PROSPER.SIN.SUM.Predict")
+                    '
+                    ' TempModel: 0 = Rough Approximation
+                    '            1 = Enthalpy Balance
+                    '            2 = Improved Approximation
+                    TempModel.Val = DoGet("PROSPER.SIN.SUM.TempModel")
+                    '
+                    ' RangeSystem: 0 = Full System
+                    '              1 = Pipeline Only
+                    RangeSystem.Val = DoGet("PROSPER.SIN.SUM.Range")
+                    '
+                    ' OutputRes: 0 = Show Calculating Data
+                    '            1 = Hide Calculating Data
+                    OutputRes.Val = DoGet("PROSPER.SIN.SUM.Output")
+                    '
+                    ' Completion: 0 = Cased Hole
+                    '             1 = Open hole
+                    Completion.Val = DoGet("PROSPER.SIN.SUM.Completion")
+                    '
+                    ' GravelPack: 0 = None
+                    '             1 = Gravel Pack
+                    '             2 = Pre Packed Screen
+                    '             3 = Wire Wrapped Screen
+                    '             4 = Slotted Liner
+                    GravelPack.Val = DoGet("PROSPER.SIN.SUM.GravelPack")
+                    '
+                    ' InflowType: 0 = Single Branch
+                    '             1 = MultiLateral Well
+                    InflowType.Val = DoGet("PROSPER.SIN.SUM.InflowType")
+                    '
+                    ' GasConing: 0 = No
+                    '            1 = Yes
+                    GasConing.Val = DoGet("PROSPER.SIN.SUM.GasConing")
+
+                Else
 
 
+                    '
+                    ' Fluido: 0 = Oil and Water
+                    '         1 = Dry and Wet Gas
+                    '         2 = Retrograde Condensate
+                    '
+                    DoSet("PROSPER.SIN.SUM.Fluid", Fluid.Val)
+                    '
+                    ' PVTModel: 0 = Black Oil
+                    '           1 = Equation of State
+                    '
+                    DoSet("PROSPER.SIN.SUM.PVTModel", PVTModel.Val)
+                    '
+                    ' Separator: 0 = Single Stage Separator
+                    '            1 = Two Stage Separator
+                    '
+                    DoSet("PROSPER.SIN.SUM.Separator", Separator.Val)
+                    '
+                    ' Emulsion: 0 = No
+                    '           1 = Emulsion + Pump Viscosity Correction
+                    '
+                    DoSet("PROSPER.SIN.SUM.Emulsion", Emulsion.Val)
+                    '
+                    ' Hydrate: 0 = Disable Warning
+                    '          1 = Enable Warning
+                    '
+                    DoSet("PROSPER.SIN.SUM.Hydrate", Hydrate.Val)
+                    '
+                    ' WatVis: 0 = Use Default Correlation
+                    '         1 = Use Pressure Corrected Correlation
+                    '
+                    DoSet("PROSPER.SIN.SUM.WatVis", WatVis.Val)
+                    '
+                    ' VisMod: 0 = Newtonian Fluid
+                    '         1 = Non Newtonian Fluid
+                    '
+                    DoSet("PROSPER.SIN.SUM.VisMod", VisMod.Val)
+                    '
+                    ' FlowType: 0 = Tubing Flow
+                    '           1 = Annular Flow
+                    '
+                    DoSet("PROSPER.SIN.SUM.FlowType", FlowType.Val)
+                    '
+                    ' WellType: 0 = Producer
+                    '           1 = Inyector
+                    '           2 = Water Inyector
+                    '
+                    DoSet("PROSPER.SIN.SUM.WellType", WellType.Val)
+                    '
+                    ' LiftMethod: 0 = None
+                    '             1 = Gas Lift (Continous)
+                    '             2 = Electrical Sumersible Pump
+                    '             3 = Hydraulic Drive Downhole Pump
+                    '             4 = Progressive Cavity Pump
+                    '             5 = Coiled Tubing Gas Lift
+                    '             6 = Diluent Injection
+                    '             7 = Jet Pump
+                    '             8 = MultiPhase Pump
+                    '             9 = Sucker Rod Pump
+                    '             10 = Gas Lift (Intermttent)
+                    '
+                    DoSet("PROSPER.SIN.SUM.LiftMethod", LiftMethod.Val)
+                    '
+                    ' LiftType: 0 = No Friction Loss In Annulus
+                    '           1 = Friction Loss In Annulus
+                    '           2 = Safety Equipment
+                    '
+                    DoSet("PROSPER.SIN.SUM.LiftType[1]", LiftType.Val)
+
+                    DoSet("PROSPER.SIN.SUM.Company", Company)
+                    DoSet("PROSPER.SIN.SUM.Field", Field)
+                    DoSet("PROSPER.SIN.SUM.Location", Locations)
+                    DoSet("PROSPER.SIN.SUM.Well", Well)
+                    DoSet("PROSPER.SIN.SUM.Platform", Platform)
+                    DoSet("PROSPER.SIN.SUM.Analyst", Analyst)
+                    DoSet("PROSPER.SIN.SUM.Date", DatGenDate)
+                    DoSet("PROSPER.Sin.Sum.Comments", Comenta)
+
+                    '
+                    ' Predict: 0 = Pressure Only
+                    '          1 = Pressure and Temperature (offshore)
+                    '          2 = Pressure and Temperature (on Land)        '
+                    DoSet("PROSPER.SIN.SUM.Predict", Predict.Val)
+                    '
+                    ' TempModel: 0 = Rough Approximation
+                    '            1 = Enthalpy Balance
+                    '            2 = Improved Approximation
+                    DoSet("PROSPER.SIN.SUM.TempModel", TempModel.Val)
+                    '
+                    ' RangeSystem: 0 = Full System
+                    '              1 = Pipeline Only
+                    DoSet("PROSPER.SIN.SUM.Range", RangeSystem.Val)
+                    '
+                    ' OutputRes: 0 = Show Calculating Data
+                    '            1 = Hide Calculating Data
+                    DoSet("PROSPER.SIN.SUM.Output", OutputRes.Val)
+                    '
+                    ' Completion: 0 = Cased Hole
+                    '             1 = Open hole
+                    DoSet("PROSPER.SIN.SUM.Completion", Completion.Val)
+                    '
+                    ' GravelPack: 0 = None
+                    '             1 = Gravel Pack
+                    '             2 = Pre Packed Screen
+                    '             3 = Wire Wrapped Screen
+                    '             4 = Slotted Liner
+                    DoSet("PROSPER.SIN.SUM.GravelPack", GravelPack.Val)
+                    '
+                    ' InflowType: 0 = Single Branch
+                    '             1 = MultiLateral Well
+                    DoSet("PROSPER.SIN.SUM.InflowType", InflowType.Val)
+                    '
+                    ' GasConing: 0 = No
+                    '            1 = Yes
+                    DoSet("PROSPER.SIN.SUM.GasConing", GasConing.Val)
+                    'CAMBIOS 05 03 2019
+                    '===============================================================
+
+
+                End If
+            Catch ex As Exception
+                Throw New Exception("Datos Generales: " + ex.Message)
+            End Try
 
         End Sub
 
@@ -2265,21 +2923,35 @@ Public Class Crea
             Dim Solgor As Double
 
             ' Evaluación del PVT a Pres Yac y Temp Yac
-            DoSet("PROSPER.PVT.Calc.TempMin", TRes.Val)
-            DoSet("PROSPER.PVT.Calc.TempMax", TRes.Val)
-            DoSet("PROSPER.PVT.Calc.TempStep", 1)
 
-            DoSet("PROSPER.PVT.Calc.PresMin", PRes.Val)
-            DoSet("PROSPER.PVT.Calc.PresMax", PRes.Val)
-            DoSet("PROSPER.PVT.Calc.PresStep", 1)
+            If Equipment Then
+                'Revisar, faltan más variables por declarar.
 
-            DoCmd("PROSPER.PVT.CALC")
+                TRes.Val = DoGet("PROSPER.PVT.Calc.TempMin")
+                PRes.Val = DoGet("PROSPER.PVT.Calc.PresMin")
 
-            ' Valor calculado por Prosper
-            Solgor = DoGet("PROSPER.PVT.Calc.Results[0].GOR")
+                Solgor = DoGet("PROSPER.PVT.Input.Solgor")
+            Else
+                DoSet("PROSPER.PVT.Calc.TempMin", TRes.Val)
+                DoSet("PROSPER.PVT.Calc.TempMax", TRes.Val)
+                DoSet("PROSPER.PVT.Calc.TempStep", 1)
 
-            ' Relación Gas Aceite tomada de la columna de los datos del yacimiento debido a que se debe filtrar.
-            DoSet("PROSPER.PVT.Input.Solgor", Solgor)
+                DoSet("PROSPER.PVT.Calc.PresMin", PRes.Val)
+                DoSet("PROSPER.PVT.Calc.PresMax", PRes.Val)
+                DoSet("PROSPER.PVT.Calc.PresStep", 1)
+
+
+                DoCmd("PROSPER.PVT.CALC")
+
+                'Valor calculado por Prosper => PROSPER.PVT.Calc.Results[0].GOR
+                Solgor = DoGet("PROSPER.PVT.Calc.Results[0].GOR")
+
+                ' Relación Gas Aceite tomada de la columna de los datos del yacimiento debido a que se debe filtrar.
+                DoSet("PROSPER.PVT.Input.Solgor", Solgor)
+            End If
+
+
+
 
             Return Solgor
 
@@ -2292,104 +2964,148 @@ Public Class Crea
         Private Function Yacimiento() As Boolean
 
             ' Resultados de la IPR
-            Dim AOF As Double = 0
-            ReDim IPR_RTEL(19)
-            ReDim IPR_PWF(19)
-            ReDim NumDatIPR(1)
-            ReDim NomSerie(1)
+            Try
+                Dim AOF As Double = 0
+                ReDim IPR_RTEL(19)
+                ReDim IPR_PWF(19)
+                ReDim NumDatIPR(1)
+                ReDim NomSerie(1)
+
+                If Equipment Then
+                    PRes.Val = DoGet("PROSPER.Sin.IPR.Single.Pres")
+                    TRes.Val = DoGet("PROSPER.Sin.IPR.Single.Tres")
+                    Wc.Val = DoGet("PROSPER.SIN.IPR.Single.Wc")
+                    GOR_Total = DoGet("PROSPER.Sin.IPR.Single.totgor")
+
+                    Compact.Val = DoGet("PROSPER.SIN.IPR.Single.Compact")
+                    IRELK.Val = DoGet("PROSPER.SIN.IPR.Single.IRELK")
+
+                    'MGSkinMethod.Val = DoGet("PROSPER.Sin.IPR.Single.MGSkinMethod")
+                    IPRMethod.Val = DoGet("PROSPER.Sin.IPR.Single.IprMethod")
+                Else
+                    DoSet("PROSPER.Sin.IPR.Single.Pres", PRes.Val)
+                    DoSet("PROSPER.Sin.IPR.Single.Tres", TRes.Val)
+                    DoSet("PROSPER.SIN.IPR.Single.Wc", Wc.Val)
+                    DoSet("PROSPER.Sin.IPR.Single.totgor", GOR_Total)
+
+                    DoSet("PROSPER.SIN.IPR.Single.Compact", Compact.Val)
+                    DoSet("PROSPER.SIN.IPR.Single.IRELK", IRELK.Val)
+
+                    ' Metodo de IPR ->
+                    ' 0: Indice de Productividad
+                    ' 1: Vogel
+                    ' 2: Compuesto (Incluye Produccion de Agua)
+                    ' 3: Darcy
+                    ' 4: Fetkovich
+                    ' 5: Fetkovich Multigasto
+                    ' 6: Jones
+                    ' 7: Jones Multigasto
+                    ' 8: Transitorio
+                    ' 9: Pozo Fracturado Hidraulicamente
+                    ' 10: Pozo Horizontal sin Flujo en las Fronteras
+                    ' 11: Pozo Horizontal con Presion Constante en la Frontera
+                    ' 12: Yacimiento MultiCapa
+                    ' 13: Calculado en Forma Externa
+                    ' 14: Pozo Horizontal con Perdida de Presion en el Pozo
+                    ' 15: Yacimiento Multicapa con Perdida de Presion en el Pozo
+                    ' 16: SkinAide (ELF)
+                    ' 17: Doble Porosidad
+                    ' 18: Pozo Horizontal Atravesado por Fracturas Verticales
+                    DoSet("PROSPER.Sin.IPR.Single.MGSkinMethod", MGSkinMethod.Val)
+                    DoSet("PROSPER.Sin.IPR.Single.IprMethod", IPRMethod.Val)
 
 
-            DoSet("PROSPER.Sin.IPR.Single.Pres", PRes.Val)
-            DoSet("PROSPER.Sin.IPR.Single.Tres", TRes.Val)
-            DoSet("PROSPER.SIN.IPR.Single.Wc", Wc.Val)
-            DoSet("PROSPER.Sin.IPR.Single.totgor", GOR_Total)
 
-            DoSet("PROSPER.SIN.IPR.Single.Compact", Compact.Val)
-            DoSet("PROSPER.SIN.IPR.Single.IRELK", IRELK.Val)
 
-            ' Metodo de IPR ->
-            ' 0: Indice de Productividad
-            ' 1: Vogel
-            ' 2: Compuesto (Incluye Produccion de Agua)
-            ' 3: Darcy
-            ' 4: Fetkovich
-            ' 5: Fetkovich Multigasto
-            ' 6: Jones
-            ' 7: Jones Multigasto
-            ' 8: Transitorio
-            ' 9: Pozo Fracturado Hidraulicamente
-            ' 10: Pozo Horizontal sin Flujo en las Fronteras
-            ' 11: Pozo Horizontal con Presion Constante en la Frontera
-            ' 12: Yacimiento MultiCapa
-            ' 13: Calculado en Forma Externa
-            ' 14: Pozo Horizontal con Perdida de Presion en el Pozo
-            ' 15: Yacimiento Multicapa con Perdida de Presion en el Pozo
-            ' 16: SkinAide (ELF)
-            ' 17: Doble Porosidad
-            ' 18: Pozo Horizontal Atravesado por Fracturas Verticales
-            DoSet("PROSPER.Sin.IPR.Single.MGSkinMethod", MGSkinMethod.Val)
-            DoSet("PROSPER.Sin.IPR.Single.IprMethod", IPRMethod.Val)
+                End If
+
+                Select Case IPRMethod.Val
+                    Case 0 ' PI Entry
+                        If Equipment Then
+                            PI.Val = DoGet("PROSPER.SIN.IPR.Single.Pindex")
+                        Else
+                            DoSet("PROSPER.SIN.IPR.Single.Pindex", PI.Val)
+                        End If
+
+                    Case 1 ' Vogel
+
+                        If Equipment Then
+                            QTest.Val = DoGet("PROSPER.SIN.IPR.Single.Qtest")
+                            Ptest.Val = DoGet("PROSPER.Sin.IPR.Single.Ptest")
+                        Else
+                            DoSet("PROSPER.SIN.IPR.Single.Qtest", QTest.Val)
+                            DoSet("PROSPER.Sin.IPR.Single.Ptest", Ptest.Val)
+                        End If
 
 
 
-            Select Case IPRMethod.Val
-                Case 0 ' PI Entry
-                    DoSet("PROSPER.SIN.IPR.Single.Pindex", PI.Val)
-                Case 1 ' Vogel
+                    Case 3 ' Darcy
 
-                    DoSet("PROSPER.SIN.IPR.Single.Qtest", QTest.Val)
-                    DoSet("PROSPER.Sin.IPR.Single.Ptest", Ptest.Val)
+                        ' Correlación para el cálculo del factor de daño Mecánico/Geometrico
+                        ' 0: Proporcionado a mano
+                        ' 1: Locke
+                        ' 2: McLeod
+                        ' 3: Karakas+Tariq
+                        MGSkinMethod.Val = 0
 
-                Case 3 ' Darcy
+                        ' Daño por desviación y penetración parcial
+                        ' 0: Cinco / Martín-Bronz
+                        ' 1: Wong-Cliford
+                        ' 2: Cinco (2) / Martín-Bronz
+                        DPSkinMethod.Val = 0
 
-                    ' Correlación para el cálculo del factor de daño Mecánico/Geometrico
-                    ' 0: Proporcionado a mano
-                    ' 1: Locke
-                    ' 2: McLeod
-                    ' 3: Karakas+Tariq
-                    MGSkinMethod.Val = 0
+                        ' Datos del modelo de Darcy
+                        If Equipment Then
+                            ResPerm.Val = DoGet("PROSPER.Sin.IPR.Single.ResPerm")
+                            Thickness.Val = DoGet("PROSPER.SIN.IPR.Single.Thickness")
+                            Drainage.Val = DoGet("PROSPER.SIN.IPR.Single.Drainage")
+                            Dietz.Val = DoGet("PROSPER.SIN.IPR.Single.Dietz")
+                            WBR.Val = DoGet("PROSPER.SIN.IPR.Single.WBR")
+                            Skin.Val = DoGet("PROSPER.SIN.IPR.Single.Skin")
+                        Else
+                            DoSet("PROSPER.Sin.IPR.Single.ResPerm", ResPerm.Val)
+                            DoSet("PROSPER.SIN.IPR.Single.Thickness", Thickness.Val)
+                            DoSet("PROSPER.SIN.IPR.Single.Drainage", Drainage.Val)
+                            DoSet("PROSPER.SIN.IPR.Single.Dietz", Dietz.Val)
+                            DoSet("PROSPER.SIN.IPR.Single.WBR", WBR.Val)
+                            DoSet("PROSPER.SIN.IPR.Single.Skin", Skin.Val)
+                        End If
 
-                    ' Daño por desviación y penetración parcial
-                    ' 0: Cinco / Martín-Bronz
-                    ' 1: Wong-Cliford
-                    ' 2: Cinco (2) / Martín-Bronz
-                    DPSkinMethod.Val = 0
+                    Case Else
+                        Throw New Exception("Yacimiento: Error IprMethod = " & IPRMethod.ToString & " , aún no se ha implementado")
+                End Select
 
-                    ' Datos del modelo de Darcy
-                    DoSet("PROSPER.Sin.IPR.Single.ResPerm", ResPerm.Val)
-                    DoSet("PROSPER.SIN.IPR.Single.Thickness", Thickness.Val)
-                    DoSet("PROSPER.SIN.IPR.Single.Drainage", Drainage.Val)
-                    DoSet("PROSPER.SIN.IPR.Single.Dietz", Dietz.Val)
-                    DoSet("PROSPER.SIN.IPR.Single.WBR", WBR.Val)
-                    DoSet("PROSPER.SIN.IPR.Single.Skin", Skin.Val)
-                Case Else
-                    Throw New Exception("Yacimiento: Error IprMethod = " & IPRMethod.ToString & " , aún no se ha implementado")
-            End Select
+                ' Ejecutar el calculo de la IPR
+                If Equipment = False Then DoCmd("PROSPER.IPR.CALC")
 
-            ' Ejecutar el calculo de la IPR
-            DoCmd("PROSPER.IPR.CALC")
 
-            ' Resultados de la IPR
+                ' Resultados de la IPR
 
-            NumDatIPR(0) = DoGet("PROSPER.Sin.IPR.Single.RTLIST.Count")
-            'ReDim Preserve Ql(1, NumCalcs)
-            'ReDim Preserve Pwf(1, NumCalcs)
+                NumDatIPR(0) = DoGet("PROSPER.Sin.IPR.Single.RTLIST.Count")
+                'ReDim Preserve Ql(1, NumCalcs)
+                'ReDim Preserve Pwf(1, NumCalcs)
 
-            For I = 0 To NumDatIPR(0) - 1
-                IPR_RTEL(I) = DoGet("PROSPER.SIN.IPR.Single.RTLIST[" & CStr(I) & "]")
-                IPR_PWF(I) = DoGet("PROSPER.Sin.IPR.Single.PWFLST[" & CStr(I) & "]")
-            Next I
+                For I = 0 To NumDatIPR(0) - 1
+                    IPR_RTEL(I) = DoGet("PROSPER.SIN.IPR.Single.RTLIST[" & CStr(I) & "]")
+                    IPR_PWF(I) = DoGet("PROSPER.Sin.IPR.Single.PWFLST[" & CStr(I) & "]")
+                Next I
 
-            '*** Get AOF
-            AOF = DoGet("PROSPER.IPR.AOF[0]") ' De la capa 0
+                '*** Get AOF
+                AOF = DoGet("PROSPER.IPR.AOF[0]") ' De la capa 0
 
-            ' Interpolación de la IPR para obtener Pwf
-            'QLiqido = QTest
+                ' Interpolación de la IPR para obtener Pwf
+                'QLiqido = QTest
 
-            ' Interpolación de la IPR para obtener Pwf
-            'Pwf_Inter = FlaGr(Ql, Pwf, QLiqido, 2, NumCalcs, IErr)
+                ' Interpolación de la IPR para obtener Pwf
+                'Pwf_Inter = FlaGr(Ql, Pwf, QLiqido, 2, NumCalcs, IErr)
 
-            'DoCmd("PROSPER.Refresh")
+                'DoCmd("PROSPER.Refresh")
+
+                Return True
+            Catch ex As Exception
+                Throw New Exception("Yacimiento: " + ex.Message)
+            End Try
+
 
         End Function
 
@@ -2398,85 +3114,189 @@ Public Class Crea
         ''' </summary>
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Private Function Configura_BN() As Boolean
-            'Configura el sistema artificial de producción de bombeo neumático
 
-            ' Densidad del gas de bombeo neumatico
-            DoSet("PROSPER.Sin.GLF.Gravity", Gravity.Val)
-            '  % Mol de H2S
-            DoSet("PROSPER.SIN.GLF.H2S", H2S.Val)
-            '  % Mol de CO2
-            DoSet("PROSPER.SIN.GLF.CO2", CO2.Val)
-            '  % Mol de N2
-            DoSet("PROSPER.SIN.GLF.N2", N2.Val)
-            ' RGIL
-            DoSet("PROSPER.SIN.GLF.GLRinj", GLRiny.Val)
-            ' Qgi
-            DoSet("PROSPER.SIN.GLF.GLRate", GLRate.Val)
-            ' Emplear RGIL o Qgi
-            '      0: Usar RGIL
-            '      1: Usar Qgi
-            DoSet("PROSPER.SIN.GLF.Entry", Entry.Val)
-            ' Metodo de  calculo del BN.
-            ' 0: Profundidad de Inyección Fija
-            ' 1: Profundidad de Inyeccion Optima
-            ' 2: Especificar la profundidad de las valvulas
-            DoSet("PROSPER.SIN.GLF.Method", Method.Val)
-            ' Profundidad de la valvula de inyeccion
-            DoSet("PROSPER.SIN.GLF.ValveDepth", ValveDepth.Val)
+            Try
+                If Equipment Then
+
+                    ' Densidad del gas de bombeo neumatico
+                    Gravity.Val = DoGet("PROSPER.Sin.GLF.Gravity")
+                    '  % Mol de H2S
+                    H2S.Val = DoGet("PROSPER.SIN.GLF.H2S")
+                    '  % Mol de CO2
+                    CO2.Val = DoGet("PROSPER.SIN.GLF.CO2")
+                    '  % Mol de N2
+                    N2.Val = DoGet("PROSPER.SIN.GLF.N2")
+                    ' RGIL
+                    GLRiny.Val = DoGet("PROSPER.SIN.GLF.GLRinj")
+                    ' Qgi
+                    GLRate.Val = DoGet("PROSPER.SIN.GLF.GLRate")
+                    ' Emplear RGIL o Qgi
+                    '      0: Usar RGIL
+                    '      1: Usar Qgi
+                    Entry.Val = DoGet("PROSPER.SIN.GLF.Entry")
+                    ' Metodo de  calculo del BN.
+                    ' 0: Profundidad de Inyección Fija
+                    ' 1: Profundidad de Inyeccion Optima
+                    ' 2: Especificar la profundidad de las valvulas
+                    Method.Val = DoGet("PROSPER.SIN.GLF.Method")
+                    ' Profundidad de la valvula de inyeccion
+                    ValveDepth.Val = DoGet("PROSPER.SIN.GLF.ValveDepth")
+
+
+                Else
+                    'Configura el sistema artificial de producción de bombeo neumático
+
+                    ' Densidad del gas de bombeo neumatico
+                    DoSet("PROSPER.Sin.GLF.Gravity", Gravity.Val)
+                    '  % Mol de H2S
+                    DoSet("PROSPER.SIN.GLF.H2S", H2S.Val)
+                    '  % Mol de CO2
+                    DoSet("PROSPER.SIN.GLF.CO2", CO2.Val)
+                    '  % Mol de N2
+                    DoSet("PROSPER.SIN.GLF.N2", N2.Val)
+                    ' RGIL
+                    DoSet("PROSPER.SIN.GLF.GLRinj", GLRiny.Val)
+                    ' Qgi
+                    DoSet("PROSPER.SIN.GLF.GLRate", GLRate.Val)
+                    ' Emplear RGIL o Qgi
+                    '      0: Usar RGIL
+                    '      1: Usar Qgi
+                    DoSet("PROSPER.SIN.GLF.Entry", Entry.Val)
+                    ' Metodo de  calculo del BN.
+                    ' 0: Profundidad de Inyección Fija
+                    ' 1: Profundidad de Inyeccion Optima
+                    ' 2: Especificar la profundidad de las valvulas
+                    DoSet("PROSPER.SIN.GLF.Method", Method.Val)
+                    ' Profundidad de la valvula de inyeccion
+                    DoSet("PROSPER.SIN.GLF.ValveDepth", ValveDepth.Val)
+                End If
+                Return True
+            Catch ex As Exception
+                Throw New Exception(ex.Message)
+            End Try
+
         End Function
         Private Function Configura_BEC() As Boolean
             'Configura el sistema artificial de producción de Bombeo Electrocentrifugo
-            'Bomba
-            Dim Bb = DoGet("PROSPER.ESP.SELECTPUMP (" & CStr(Bomba_BEC.Val) & ")")
-            'Motor-Potencia
-            Dim MP = DoGet("PROSPER.ESP.SELECTMOTOR(" & CStr(Motor_BEC.Val) & "," & CStr(PotenciaMotor_BEC.Val) & ")")
-            'Cable
-            Dim Cb = DoGet("PROSPER.ESP.SELECTCABLE(" & CStr(Cable_BEC.Val) & ")")
-            'Profundidad de la bomba en mD
-            DoSet("PROSPER.SIN.ESP.Depth", Prof_BEC.Val)
-            'Frecuencia de operación de la bambo en Hz
-            DoSet("PROSPER.SIN.ESP.Frequency", Frec_BEC.Val)
-            'Máximo diametro exterior de la bomba en pulgadas
-            DoSet("PROSPER.SIN.ESP.MaxPumpOD", ODMax_BEC.Val)
-            'Logitud del cable de potencia m
-            DoSet("PROSPER.SIN.ESP.CableLength", LongCable_BEC.Val)
-            'Eficiencia del separador del gas
-            DoSet("PROSPER.SIN.ESP.Efficiency", EfiSepGas_BEC.Val)
-            'Número de etapas de la bomba
-            DoSet("PROSPER.SIN.ESP.Stages", Etapas_BEC.Val)
-            'Voltaje en superficie en volts
-            DoSet("PROSPER.SIN.ESP.Volts", VoltSup_BEC.Val)
-            'Factor de desgaste de la bomba en fracciones
-            DoSet("PROSPER.SIN.ESP.Wear", Desgaste_BEC.Val)
-            'Modelo de reducción de gas
-            DoSet("PROSPER.SIN.ESP.GDRflag", ReducGas_BEC.Val)
+
+            If Equipment Then
+
+                'Profundidad de la bomba en mD
+                Prof_BEC.Val = DoGet("PROSPER.SIN.ESP.Depth")
+                'Frecuencia de operación de la bambo en Hz
+                Frec_BEC.Val = DoGet("PROSPER.SIN.ESP.Frequency")
+                'Máximo diametro exterior de la bomba en pulgadas
+                ODMax_BEC.Val = DoGet("PROSPER.SIN.ESP.MaxPumpOD")
+                'Logitud del cable de potencia m
+                LongCable_BEC.Val = DoGet("PROSPER.SIN.ESP.CableLength")
+                'Eficiencia del separador del gas
+                EfiSepGas_BEC.Val = DoGet("PROSPER.SIN.ESP.Efficiency")
+                'Número de etapas de la bomba
+                Etapas_BEC.Val = DoGet("PROSPER.SIN.ESP.Stages")
+                'Voltaje en superficie en volts
+                VoltSup_BEC.Val = DoGet("PROSPER.SIN.ESP.Volts")
+                'Factor de desgaste de la bomba en fracciones
+                Desgaste_BEC.Val = DoGet("PROSPER.SIN.ESP.Wear")
+                'Modelo de reducción de gas
+                ReducGas_BEC.Val = DoGet("PROSPER.SIN.ESP.GDRflag")
+            Else
+                'Bomba
+                Dim Bb = DoGet("PROSPER.ESP.SELECTPUMP (" & CStr(Bomba_BEC.Val) & ")")
+                'Motor-Potencia
+                Dim MP = DoGet("PROSPER.ESP.SELECTMOTOR(" & CStr(Motor_BEC.Val) & "," & CStr(PotenciaMotor_BEC.Val) & ")")
+                'Cable
+                Dim Cb = DoGet("PROSPER.ESP.SELECTCABLE(" & CStr(Cable_BEC.Val) & ")")
+                'Profundidad de la bomba en mD
+                DoSet("PROSPER.SIN.ESP.Depth", Prof_BEC.Val)
+                'Frecuencia de operación de la bambo en Hz
+                DoSet("PROSPER.SIN.ESP.Frequency", Frec_BEC.Val)
+                'Máximo diametro exterior de la bomba en pulgadas
+                DoSet("PROSPER.SIN.ESP.MaxPumpOD", ODMax_BEC.Val)
+                'Logitud del cable de potencia m
+                DoSet("PROSPER.SIN.ESP.CableLength", LongCable_BEC.Val)
+                'Eficiencia del separador del gas
+                DoSet("PROSPER.SIN.ESP.Efficiency", EfiSepGas_BEC.Val)
+                'Número de etapas de la bomba
+                DoSet("PROSPER.SIN.ESP.Stages", Etapas_BEC.Val)
+                'Voltaje en superficie en volts
+                DoSet("PROSPER.SIN.ESP.Volts", VoltSup_BEC.Val)
+                'Factor de desgaste de la bomba en fracciones
+                DoSet("PROSPER.SIN.ESP.Wear", Desgaste_BEC.Val)
+                'Modelo de reducción de gas
+                DoSet("PROSPER.SIN.ESP.GDRflag", ReducGas_BEC.Val)
+            End If
+
         End Function
         ''' <summary>
         ''' Se envían los datos del estado mecánico a Prosper
         ''' </summary>
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Private Function EdoMec_Dat() As Boolean
+            Try
+                ' Dim I As Integer = 0
 
-            Dim I As Integer = 0
+                ' Datos del Estado Mecánico
+                ' Type: 0: Árbol de válvulas
+                '       1: TP
+                '       2: Válvula de tormenta
+                '       3: Restricción
+                '       4: TR
+                '
+                If Equipment Then
+                    NumDatEdoMec.Val = DoGet("PROSPER.SIN.EQP.DOWN.DATA.COUNT")
 
-            ' Datos del Estado Mecánico
-            ' Type: 0: Árbol de válvulas
-            '       1: TP
-            '       2: Válvula de tormenta
-            '       3: Restricción
-            '       4: TR
-            '
-            For I = 0 To NumDatEdoMec.Val - 1
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].Label", Label(I))
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].Type", DType.Val(I))
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].Depth", Depth.Val(I))
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].TID", TID.Val(I))
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].TIR", TIR.Val(I))
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].TOD", TOD.Val(I))
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].TOR", TOR.Val(I))
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].CID", CID.Val(I))
-                DoSet("PROSPER.SIN.EQP.Down.Data[" & CStr(I) & "].CIR", CIR.Val(I))
-            Next I
+                    ReDim Label(NumDatEdoMec.Val - 1)
+                    ReDim DType.Val(NumDatEdoMec.Val - 1)
+                    ReDim Depth.Val(NumDatEdoMec.Val - 1)
+                    ReDim TID.Val(NumDatEdoMec.Val - 1)
+                    ReDim TIR.Val(NumDatEdoMec.Val - 1)
+                    ReDim TOD.Val(NumDatEdoMec.Val - 1)
+                    ReDim TOR.Val(NumDatEdoMec.Val - 1)
+                    ReDim CID.Val(NumDatEdoMec.Val - 1)
+                    ReDim CIR.Val(NumDatEdoMec.Val - 1)
+
+
+
+
+
+
+                    For I = 0 To NumDatEdoMec.Val - 1
+                        Label(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].Label")
+                        DType.Val(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].Type")
+                        Depth.Val(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].Depth")
+                        TID.Val(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].TID")
+                        TIR.Val(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].TIR")
+                        TOD.Val(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].TOD")
+                        TOR.Val(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].TOR")
+                        CID.Val(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].CID")
+                        CIR.Val(I) = DoGet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].CIR")
+                    Next
+
+
+                Else
+
+
+                    For I = 0 To NumDatEdoMec.Val - 1
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].Label", Label(I))
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].Type", DType.Val(I))
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].Depth", Depth.Val(I))
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].TID", TID.Val(I))
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].TIR", TIR.Val(I))
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].TOD", TOD.Val(I))
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].TOR", TOR.Val(I))
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].CID", CID.Val(I))
+                        DoSet("PROSPER.SIN.EQP.Down.Data[" + I.ToString() + "].CIR", CIR.Val(I))
+                    Next I
+                End If
+
+                If NumDatEdoMec.Val = 0 Then
+                    Throw New Exception("No hay estado mecanico")
+                End If
+
+                Return True
+            Catch ex As Exception
+                Throw New Exception("EdoMec_Dat: " + ex.Message + ", Elementos: " + NumDatEdoMec.Val.ToString())
+            End Try
 
         End Function
 
@@ -2486,15 +3306,37 @@ Public Class Crea
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Private Function RegDesv() As Boolean
 
-            Dim I As Integer = 0
+            Try
+                If Equipment Then
+                    'Revisar talvez sea estatico vaya de  0 a 19 : 20 puntos
+                    NumDatTrayecto.Val = DoGet("PROSPER.SIN.EQP.DEVN.DATA.COUNT")
 
-            ' Registro de Desviaciones
+                    ReDim RDEnable.Val(NumDatTrayecto.Val - 1)
+                    ReDim RDMd.Val(NumDatTrayecto.Val - 1)
+                    ReDim RDTvd.Val(NumDatTrayecto.Val - 1)
 
-            For I = 0 To NumDatTrayecto.Val - 1
-                DoSet("Prosper.SIN.EQP.Devn.Data[" & CStr(I) & "].Enable", RDEnable.Val(I))
-                DoSet("PROSPER.Sin.EQP.Devn.Data[" & CStr(I) & "].Md", RDMd.Val(I))
-                DoSet("PROSPER.Sin.EQP.Devn.Data[" & CStr(I) & "].Tvd", RDTvd.Val(I))
-            Next I
+                    For I = 0 To NumDatTrayecto.Val - 1
+                        'RDEnable.Val(I) = DoGet("Prosper.SIN.EQP.Devn.Data[" & CStr(I) & "].Enable")
+                        RDMd.Val(I) = DoGet("PROSPER.Sin.EQP.Devn.Data[" & CStr(I) & "].Md")
+                        RDTvd.Val(I) = DoGet("PROSPER.Sin.EQP.Devn.Data[" & CStr(I) & "].Tvd")
+                    Next I
+                Else
+                    For I = 0 To NumDatTrayecto.Val - 1
+                        DoSet("Prosper.SIN.EQP.Devn.Data[" & CStr(I) & "].Enable", RDEnable.Val(I))
+                        DoSet("PROSPER.Sin.EQP.Devn.Data[" & CStr(I) & "].Md", RDMd.Val(I))
+                        DoSet("PROSPER.Sin.EQP.Devn.Data[" & CStr(I) & "].Tvd", RDTvd.Val(I))
+                    Next I
+                End If
+
+                If NumDatTrayecto.Val = 0 Then
+                    Throw New Exception("No hay registro de trayectoria")
+                End If
+
+                Return True
+
+            Catch ex As Exception
+                Throw New Exception("RegDesv: " + ex.Message + ", Elementos: " + NumDatTrayecto.Val.ToString())
+            End Try
 
         End Function
 
@@ -2503,14 +3345,43 @@ Public Class Crea
         ''' </summary>
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Private Function PerfilTemp() As Boolean
-            Dim I As Integer = 0
+            ' Dim I As Integer = 0
             ' Perfil de Temperatura (Gradiente Geotermico)
-            DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc.Val)
+            Try
 
-            For I = 0 To NumDatTemp.Val - 1
-                DoSet("PROSPER.SIN.EQP.Geo.Data[" & CStr(I) & "].Md", PTMd.Val(I))
-                DoSet("PROSPER.SIN.EQP.Geo.Data[" & CStr(I) & "].Tmp", PTTmp.Val(I))
-            Next I
+
+                If Equipment Then
+                    Htc.Val = DoGet("PROSPER.SIN.EQP.Geo.Htc")
+
+                    NumDatTemp.Val = DoGet("PROSPER.SIN.EQP.GEO.DATA.COUNT")
+
+                    ReDim PTMd.Val(NumDatTemp.Val - 1)
+                    ReDim PTTmp.Val(NumDatTemp.Val - 1)
+
+                    For I = 0 To NumDatTemp.Val - 1
+                        PTMd.Val(I) = DoGet("PROSPER.SIN.EQP.Geo.Data[" + I.ToString() + "].Md")
+                        PTTmp.Val(I) = DoGet("PROSPER.SIN.EQP.Geo.Data[" + I.ToString() + "].Tmp")
+                    Next I
+                Else
+                    DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc.Val)
+                    'VERSION 7.5
+                    ''For I = 0 To NumDatTemp.Val - 1
+                    ''    DoSet("PROSPER.SIN.EQP.Temp.Data[" + I.ToString() + "].Md", PTMd.Val(I))
+                    ''    DoSet("PROSPER.SIN.EQP.Temp.Data[" + I.ToString() + "].Tmp", PTTmp.Val(I))
+                    ''Next I
+                    For I = 0 To NumDatTemp.Val - 1
+                        DoSet("PROSPER.SIN.EQP.Geo.Data[" + I.ToString() + "].Md", PTMd.Val(I))
+                        DoSet("PROSPER.SIN.EQP.Geo.Data[" + I.ToString() + "].Tmp", PTTmp.Val(I))
+                    Next I
+
+                End If
+
+                Return True
+            Catch ex As Exception
+                Throw New Exception("PerfilTemp: " + ex.Message + ", Elementos: " + NumDatTemp.Val.ToString())
+            End Try
+
+
 
         End Function
         ''' <summary>
@@ -2520,10 +3391,12 @@ Public Class Crea
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Public Shared Function TubDescarga(ByVal TempTP As Double) As Boolean
             ' Deshabilitar el equipo superficial
+
             DoSet("PROSPER.Sin.EQP.Surf.Disable", 0)
             DoSet("PROSPER.Sin.EQP.Surf.Tmp", TempTP)
             DoSet("PROSPER.Sin.EQP.Surf.Htc", 4)
             DoSet("PROSPER.Sin.EQP.Geo.Htc", 4)
+            Return True
         End Function
 
         ''' <summary>
@@ -2535,276 +3408,460 @@ Public Class Crea
             ' Ajuste VLP/IPR. 
             ' La sub rutina únicamente ajusta un solo juego de valores
             ' por lo que sólo se usa: DATA[0]
-
-            Dim RATETYPE, ENABLE As Integer
-            Dim VLPLABEL As String = ""
-            Dim Htc As Double
-            Dim TCCMsd, TMSDCC As Double
-            ' Desde (DunsandRosModified) hasta (PetroleumExperts3)
-            ReDim ProfDesa(9, 100)
-            ReDim TVDCC(9, 100)
-            ReDim PresWf(9, 100)
-            ReDim NumDatCorr(9)
-            ReDim NomCorr(9)
-
-
-            ' Tipo de fluido producido -> 0: Liquido, 1: Aceite, 2: Gas.
-            RATETYPE = 0
-            ' Habilitar/Desabilitar los valores de DATA[i].
-            ENABLE = 0
-            ' Etiqueta
-            VLPLABEL = "Prof. Estabilizacion"
-
-            DoSet("PROSPER.ANL.VMT.RATETYPE", RATETYPE)
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].ENABLE", ENABLE)
-            DoSet("PROSPER.ANL.VMT.Data[" & CStr(0) & "].label", VLPLABEL) ' "Prof. Estabilidad")
-
-            ' Presion en la cabeza del pozo (Pth)
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THPRES", THPres.Val)
-            ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THTEMP", THTemp.Val)
-            ' Corte de Agua. (Relación agua aceite WC)
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].WC", Wc.Val)
-            ' Produccion de liquido
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].RATE", QTest.Val)
-            ' Profundidad de medicion de la Pwf
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GDEPTH", NivMedDisp.Val)
-            ' Presion de fondo fluyendo a la profundad de la medición
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GPRES", Ptest.Val)
-            ' Presion de fondo estática (Pws) a la profundidad de la medición
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].PRES", PRes.Val)
-            ' Relación gas aceite
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GOR", GOR_PTy)
-            ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GORFREE", GORFree)
-            ' Gasto de Gas de Inyeccion.
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].IRATE", GLRate.Val)
-            ' Profundidad de la valvula de inyeccion.
-            DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].IDEPTH", ValveDepth.Val)
-
-
-
-            ' Se procede a realizar el ajuste 
-            DoCmd("PROSPER.ANL.VMT.UVAL")
-
-            Htc = DoGet("Prosper.ANL.VMT.Data[" & CStr(0) & "].Uvalue")
-
-            DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
-
-
-            ' Comparación de correlaciones
-            ' Presión en la cabeza del pozo (Pth)
-            DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
-            ' Corte de Agua. (Relación agua aceite WC)
-            DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
-            ' Producción de liquido
-            DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
-            ' Relación gas aceite
-            DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
-            ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
-            DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
-
-            DoSet("PROSPER.ANL.TCC.GLRate", GLRate.Val)
-            DoSet("PROSPER.ANL.TCC.GLDepth", ValveDepth.Val)
-
-            If Settings.GetBy("prosper_version") = "IPM 11" Then
-
-
-            End If
-
-            ' Tipo de producción
-            ' 0 : Producción de liquido
-            ' 1 : Producción de aceite
-            DoSet("PROSPER.ANL.TCC.RateType", 0)
-
-            '
-            ' Correlación de la linea de descarga
-            '
-            ' 2  FancherBrown
-            ' 4  MukerjeeBrill
-            ' 5  BeggsandBrill
-            ' 6  DuklerFlannigan
-            ' 7  DuklerEatonFlannigan
-            ' 13 BeggsandBrillGasHead
-            ' 14 GREmodifiedbyPE
-            ' 15 GREwithDSM
-            ' 16 GREoriginal
-            ' 17 GREwithAE
-            ' 18 PetroleumExperts4
-            ' 19 Hydro3P
-            ' 20 PetroleumExperts5
-            ' 21 OLGAS2P
-            ' 22 OLGAS3P
-            ' 23 OLGAS3PEXT
-            '
-            DoSet("PROSPER.ANL.TCC.Pipe", 5)
-
-            ' EMR del estadomecánico
-            TCCMsd = 1
-
-            ' Datos medidos
-            DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
-            DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", NivMedDisp.Val)
-            DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
-            DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
-
-            ' Use the following list to to determine the value of corrname to select the correlation by name
-            '
-            ' 0       DunsandRosModified
-            ' 1       HagedornBrown
-            ' 2       FancherBrown
-            ' 3       MukerjeeBrill
-            ' 4       BeggsandBrill
-            ' 5       PetroleumExperts
-            ' 6       Orkiszewski
-            ' 7       PetroleumExperts2
-            ' 8       DunsandRosOriginal
-            ' 9       PetroleumExperts3
-            ' 10      GREmodifiedbyPE
-            ' 11      PetroleumExperts4
-            ' 12      Hydro3P
-            ' 13      PetroleumExperts5
-            ' 14      OLGAS2P
-            ' 15      OLGAS3P
-            ' 16      OLGAS3PEXT
-
-            For I = 0 To 9 ' Solo hasta petroleum Expert 3
-                DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 1)
-            Next I
-
-            DoCmd("PROSPER.ANL.TCC.CALC")
-
-            '
-            ' Resultados de Comparación de Correlaciones 
-            '
-            Dim Indice, J As Integer
-            Dim IndiceTmp As String
-            ReDim NumCor(NumCorr.Val - 1)
-            'Dim NumCor(NumCorr.Val - 1) As Integer
-            Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
-            Dim LabelCC(NumCorr.Val - 1, 100) As String
-            Dim TempCC(NumCorr.Val - 1, 100) As Double
-
-            TMSDCC = Int(0)
-
             Try
-                Dim max As Integer = 0
 
-                ' Resultados: Escribe en la hoja comparacion de correlaciones
-                For Indice = 0 To 9 'NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
-                    IndiceTmp = CStr(IndiceCorr(Indice))
-                    J = 0
-
-                    Dim TotalCorrs As Integer = Integer.Parse(DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].COUNT"))
-
-                    ' Do Until (TMSDCC >= Math.Round(NivMedDisp.Val - 0.5, 0)) ' For j = 1 To 100
-                    For J = 0 To TotalCorrs - 1
-                        'If J > max Then
-                        '    max = J
-                        '    ReDim Preserve LabelCC(NumCorr.Val - 1, J)
-                        '    ReDim Preserve ProfDesa(NumCorr.Val - 1, J)
-                        '    ReDim Preserve TVDCC(NumCorr.Val - 1, J)
-                        '    ReDim Preserve PresWf(NumCorr.Val - 1, J)
-                        '    ReDim Preserve TempCC(NumCorr.Val - 1, J)
-                        'End If
+                Dim RATETYPE, ENABLE As Integer
+                Dim VLPLABEL As String = ""
+                Dim Htc As Double
+                Dim TCCMsd, TMSDCC As Double
 
 
-                        ' Etiqueta
-                        LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
-                        ' Profundidad desarrollada
-                        ProfDesa(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(J) & "]")
-                        ' Profundidad vertical
-                        TVDCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].TVD[" & CStr(J) & "]")
-                        ' Presion
-                        PresWf(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Pres[" & CStr(J) & "]")
-                        ' Temperatura
-                        TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
-                        ' Profundidad desarrollada
-                        TMSDCC = ProfDesa(Indice, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
-                        TMSDCC = Math.Round(TMSDCC, 0)
-                        NumDatCorr(Indice) = J
-                        'J = J + 1
-                        ' Loop
+
+                ' Tipo de fluido producido -> 0: Liquido, 1: Aceite, 2: Gas.
+                RATETYPE = 0
+                ' Habilitar/Desabilitar los valores de DATA[i].
+                ENABLE = 0
+                ' Etiqueta
+                VLPLABEL = "Prof. Estabilizacion"
+                'Dim IndexTest As Integer = 0
+
+                If Equipment Then
+                    ' Desde (DunsandRosModified) hasta (PetroleumExperts3)
+                    NumCorr.Val = 15
+                    'Buscamos el test
+                    '====================================================
+                    Dim TotalTests As Integer = DoGet("PROSPER.ANL.VMT.DATA.COUNT")
+
+                    If TotalTests = 0 Then
+                        Throw New Exception("No hay tests disponibles")
+                    End If
+
+                    For i = 0 To TotalTests - 1
+
+                        Dim Enabled As Integer = DoGet("PROSPER.ANL.VMT.Data[" + i.ToString() + "].Enable")
+
+                        If Enabled = 0 Then
+                            TestIndex = i
+                        End If
+
                     Next
-                    ' Presion en el intevalo medio productor
-                    PwfCC(Indice) = PresWf(Indice, J - 1)
-                    DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
-                    NumCor(Indice) = Indice
-                    NomCorr(Indice) = NombrCorr(Indice)
-                    ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
-                    TMSDCC = 0
-                Next Indice
 
 
-                ' Se ordenan las correlaciones de menor diferencia de presion a mayor diferencia DifPwf
-                Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
+                    ' Presion en la cabeza del pozo (Pth)
+                    THPres.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].THPRES")
+                    ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
+                    THTemp.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].THTEMP")
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    Wc.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].WC")
+                    ' Produccion de liquido
+                    QTest.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].RATE")
+                    ' Profundidad de medicion de la Pwf
+                    NivMedDisp.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GDEPTH")
+                    ' Presion de fondo fluyendo a la profundad de la medición
+                    Ptest.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GPRES")
+                    ' Presion de fondo estática (Pws) a la profundidad de la medición
+                    PRes.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].PRES")
+                    ' Relación gas aceite
+                    GOR_PTy = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GOR")
+                    ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
+                    GORFree = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GORFREE")
+                    ' Gasto de Gas de Inyeccion.
+                    GLRate.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].IRATE") 'Verificar si es el mismo comando: PROSPER.SIN.GLF.GLRate
+                    ' Profundidad de la valvula de inyeccion.
+                    ValveDepth.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].IDEPTH")
 
-                'Se limpia la correlaciones
-                For i = 0 To 9
-                    DoSet("PROSPER.ANL.VMT.Corr[" & i & "]", 0)
-                Next i
-                ' Se seleccionan la correlaciones del mejor ajuste
-                DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
-                DoCmd("PROSPER.ANL.VMT.CALC")
+                    DiamValBNC.Val = DoGet("PROSPER.SIN.GLF.OrificeDia")
+
+                    Htc = DoGet("Prosper.ANL.VMT.Data[" + TestIndex.ToString() + "].Uvalue")
 
 
-                If Settings.GetBy("prosper_version") = "IPM 7.5" Then
-                    ' Se seleccionan las tres primeras correlaciones
-                    For Indice = 0 To 2
-                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(Indice)) & "]", 1)
+                    ''CARGAR DATOS GENERALES TCC
+
+                    DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
+
+                    ' Comparación de correlaciones
+                    ' Presión en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
+                    ' Producción de liquido
+                    DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
+                    ' Relación gas aceite
+                    DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
+                    ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
+                    DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
+
+                    DoSet("PROSPER.ANL.TCC.GLRate", GLRate.Val)
+                    DoSet("PROSPER.ANL.TCC.GLDepth", ValveDepth.Val)
+
+
+                    ' Tipo de producción
+                    ' 0 : Producción de liquido
+                    ' 1 : Producción de aceite
+                    DoSet("PROSPER.ANL.TCC.RateType", 0)
+
+                    DoSet("PROSPER.ANL.TCC.Pipe", 5)
+
+                    ' EMR del estadomecánico
+                    TCCMsd = 1
+
+                    ' Datos medidos
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", NivMedDisp.Val)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
+
+
+                    'Agregado 04 Dic 2019
+                    RGA_Aforo.Val = GOR_PTy
+                    TotGor.Val = GOR_PTy
+
+
+                    For i = 0 To NumCorr.Val - 1 ' Solo hasta Hidro 2P
+                        DoSet("PROSPER.ANL.TCC.Corr[" + i.ToString() + "]", 1)
+                    Next i
+                    DoCmd("PROSPER.ANL.TCC.CALC")
+
+
+                    Dim Indice = 0, J As Integer
+                    'Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val - 1) As Double
+                    ReDim NumCor(NumCorr.Val - 1), NomCorr(NumCorr.Val - 1)
+                    Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val - 1) As Double
+                    ReDim ProfDesa(NumCorr.Val - 1, 100)
+                    ReDim TVDCC(NumCorr.Val - 1, 100)
+                    ReDim PresWf(NumCorr.Val - 1, 100)
+                    ReDim NumDatCorr(NumCorr.Val - 1)
+
+
+                    'Dim IndiceCorr As Integer
+                    Dim max As Integer = 0
+
+                    'RESULTADOS
+                    '=======================================================================================
+                    For i = 0 To NumCorr.Val - 1
+
+                        Dim IndiceTmp = CStr(IndiceCorr(i))
+                        Dim TotalCorrs As Integer = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].COUNT")
+
+
+
+                        If TotalCorrs > max Then
+                            max = TotalCorrs
+                            ReDim Preserve ProfDesa(NumCorr.Val - 1, max - 1)
+                            ReDim Preserve TVDCC(NumCorr.Val - 1, max - 1)
+                            ReDim Preserve PresWf(NumCorr.Val - 1, max - 1)
+                        End If
+
+
+                        If TotalCorrs > 0 Then
+                            'ReDim Preserve PwfCC(Indice), DifPwf(Indice), NomCorr(Indice), NumCor(Indice)
+                            For J = 0 To TotalCorrs - 1
+
+
+                                ' Etiqueta
+                                'LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
+                                ' Profundidad desarrollada
+                                ProfDesa(i, J) = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].MSD[" & CStr(J) & "]")
+                                ' Profundidad vertical
+                                TVDCC(i, J) = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].TVD[" & CStr(J) & "]")
+                                ' Presion
+                                PresWf(i, J) = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].Pres[" & CStr(J) & "]")
+                                ' Temperatura
+                                'TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
+                                ' Profundidad desarrollada
+                                TMSDCC = ProfDesa(i, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
+                                TMSDCC = Math.Round(TMSDCC, 0)
+                                NumDatCorr(Indice) = J
+                                'J = J + 1
+                                ' Loop
+                            Next
+
+
+                            NumCor(Indice) = i
+                            NomCorr(Indice) = NombrCorr(i)
+                            PwfCC(Indice) = PresWf(i, J - 1)
+                            DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
+
+                            Indice += 1
+                        End If
+
+                        Dim Param1 As Double = DoGet("PROSPER.ANL.COR.CORR[" + IndiceTmp.ToString() + "].A[0]")
+                        Dim Param2 As Double = DoGet("PROSPER.ANL.COR.CORR[" + IndiceTmp.ToString() + "].A[1]")
+
+                        If Param1 <> 1 Or Param2 <> 1 Then
+                            CorrVFP = NumCor(i)
+                            CorrIndex = NumCor(i)
+                        End If
+
+                        ' PwfCC(Indice) = PresWf(Indice, J - 1)
+                        'DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
+                        'NumCor(i) = i
+                        'NomCorr(i) = NombrCorr(i)
+
+
+
+
+
+
+
+                    Next
+
+                    'If DifPwf Is Nothing Then
+                    '    Throw New Exception("No hay resultado de  correlaciones.")
+                    'End If
+                    'Call SortBubble(DifPwf.Count(), NumCor, NomCorr, DifPwf, 3, True)
+
+                    'CorrVFP = NumCor(0)
+                    'CorrIndex = NumCor(0)
+
+                    Return True
+                Else
+                    DoSet("PROSPER.ANL.VMT.RATETYPE", RATETYPE)
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].ENABLE", ENABLE)
+                    DoSet("PROSPER.ANL.VMT.Data[" & CStr(0) & "].label", VLPLABEL) ' "Prof. Estabilidad")
+
+                    ' Presion en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THPRES", THPres.Val)
+                    ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THTEMP", THTemp.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].WC", Wc.Val)
+                    ' Produccion de liquido
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].RATE", QTest.Val)
+                    ' Profundidad de medicion de la Pwf
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GDEPTH", NivMedDisp.Val)
+                    ' Presion de fondo fluyendo a la profundad de la medición
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GPRES", Ptest.Val)
+                    ' Presion de fondo estática (Pws) a la profundidad de la medición
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].PRES", PRes.Val)
+                    ' Relación gas aceite
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GOR", GOR_PTy)
+                    ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GORFREE", GORFree)
+                    ' Gasto de Gas de Inyeccion.
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].IRATE", GLRate.Val)
+                    ' Profundidad de la valvula de inyeccion.
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].IDEPTH", ValveDepth.Val)
+                    ' diametro de la valvulta bn
+                    DoSet("PROSPER.SIN.GLF.OrificeDia", DiamValBNC.Val)
+
+
+
+
+
+                    ' Se procede a realizar el ajuste 
+                    DoCmd("PROSPER.ANL.VMT.UVAL")
+
+                    Htc = DoGet("Prosper.ANL.VMT.Data[" & CStr(0) & "].Uvalue")
+
+
+
+                    DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
+
+
+                    ' Comparación de correlaciones
+                    ' Presión en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
+                    ' Producción de liquido
+                    DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
+                    ' Relación gas aceite
+                    DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
+                    ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
+                    DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
+
+                    DoSet("PROSPER.ANL.TCC.GLRate", GLRate.Val)
+                    DoSet("PROSPER.ANL.TCC.GLDepth", ValveDepth.Val)
+
+
+
+                    ' Tipo de producción
+                    ' 0 : Producción de liquido
+                    ' 1 : Producción de aceite
+                    DoSet("PROSPER.ANL.TCC.RateType", 0)
+
+                    '
+                    ' Correlación de la linea de descarga
+                    '
+                    ' 2  FancherBrown
+                    ' 4  MukerjeeBrill
+                    ' 5  BeggsandBrill
+                    ' 6  DuklerFlannigan
+                    ' 7  DuklerEatonFlannigan
+                    ' 13 BeggsandBrillGasHead
+                    ' 14 GREmodifiedbyPE
+                    ' 15 GREwithDSM
+                    ' 16 GREoriginal
+                    ' 17 GREwithAE
+                    ' 18 PetroleumExperts4
+                    ' 19 Hydro3P
+                    ' 20 PetroleumExperts5
+                    ' 21 OLGAS2P
+                    ' 22 OLGAS3P
+                    ' 23 OLGAS3PEXT
+                    '
+                    DoSet("PROSPER.ANL.TCC.Pipe", 5)
+
+                    ' EMR del estadomecánico
+                    TCCMsd = 1
+
+                    ' Datos medidos
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", NivMedDisp.Val)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
+
+                    ' Use the following list to to determine the value of corrname to select the correlation by name
+                    '
+                    ' 0       DunsandRosModified
+                    ' 1       HagedornBrown
+                    ' 2       FancherBrown
+                    ' 3       MukerjeeBrill
+                    ' 4       BeggsandBrill
+                    ' 5       PetroleumExperts
+                    ' 6       Orkiszewski
+                    ' 7       PetroleumExperts2
+                    ' 8       DunsandRosOriginal
+                    ' 9       PetroleumExperts3
+                    ' 10      GREmodifiedbyPE
+                    ' 11      PetroleumExperts4
+                    ' 12      Hydro3P
+                    ' 13      PetroleumExperts5
+                    ' 14      OLGAS2P
+                    ' 15      OLGAS3P
+                    ' 16      OLGAS3PEXT
+
+                    For I = 0 To 9 ' Solo hasta petroleum Expert 3
+                        DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 1)
+                    Next I
+
+
+
+                    DoCmd("PROSPER.ANL.TCC.CALC")
+
+                    '
+                    ' Resultados de Comparación de Correlaciones 
+                    '
+                    Dim Indice, J As Integer
+                    Dim IndiceTmp As String
+                    ReDim NumCor(NumCorr.Val - 1)
+
+                    ReDim ProfDesa(NumCorr.Val - 1, 100)
+                    ReDim TVDCC(NumCorr.Val - 1, 100)
+                    ReDim PresWf(NumCorr.Val - 1, 100)
+                    ReDim NumDatCorr(NumCorr.Val - 1)
+                    ReDim NomCorr(NumCorr.Val - 1)
+                    'Dim NumCor(NumCorr.Val - 1) As Integer
+                    Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
+                    Dim LabelCC(NumCorr.Val - 1, 100) As String
+                    Dim TempCC(NumCorr.Val - 1, 100) As Double
+
+                    TMSDCC = Int(0)
+
+
+                    Dim max As Integer = 0
+
+                    ' Resultados: Escribe en la hoja comparacion de correlaciones
+                    For Indice = 0 To NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
+                        IndiceTmp = CStr(IndiceCorr(Indice))
+                        J = 0
+
+                        Dim TotalCorrs As Integer = Integer.Parse(DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp + "].COUNT"))
+                        If TotalCorrs > max Then
+                            max = TotalCorrs
+                            ReDim Preserve ProfDesa(NumCorr.Val - 1, max - 1)
+                            ReDim Preserve TVDCC(NumCorr.Val - 1, max - 1)
+                            ReDim Preserve PresWf(NumCorr.Val - 1, max - 1)
+                        End If
+                        ' Do Until (TMSDCC >= Math.Round(NivMedDisp.Val - 0.5, 0)) ' For j = 1 To 100
+                        For J = 0 To TotalCorrs - 1
+
+
+
+                            ' Etiqueta
+                            LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
+                            ' Profundidad desarrollada
+                            ProfDesa(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(J) & "]")
+                            ' Profundidad vertical
+                            TVDCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].TVD[" & CStr(J) & "]")
+                            ' Presion
+                            PresWf(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Pres[" & CStr(J) & "]")
+                            ' Temperatura
+                            TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
+                            ' Profundidad desarrollada
+                            TMSDCC = ProfDesa(Indice, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
+                            TMSDCC = Math.Round(TMSDCC, 0)
+                            NumDatCorr(Indice) = J
+                            'J = J + 1
+                            ' Loop
+                        Next
+                        ' Presion en el intevalo medio productor
+                        PwfCC(Indice) = PresWf(Indice, J - 1)
+                        DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
+                        NumCor(Indice) = Indice
+                        NomCorr(Indice) = NombrCorr(Indice)
+                        ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
+                        TMSDCC = 0
                     Next Indice
 
-                    DoCmd("PROSPER.ANL.VMT.CALC")
-                    'Valores de Parametro 1 y Parametro 2
 
-                    Dim TmpNomC(2) As String
-                    Dim MsgTmp(2, 2) As String
-
-                    For Indice = 0 To 2
-                        TmpNomC(Indice) = NombrCorr_2(NumCor(Indice) + 1)
-                        MsgTmp(Indice, 0) = DoGet("PROSPER.ANL.COR.Corr[{" & TmpNomC(Indice) & "}].A[" & CStr(0) & "]")
-                        MsgTmp(Indice, 1) = DoGet("PROSPER.ANL.COR.Corr[{" & TmpNomC(Indice) & "}].A[" & CStr(1) & "]")
-                        MsgTmp(Indice, 2) = DoGet("PROSPER.ANL.COR.Corr[{" & TmpNomC(Indice) & "}].A[" & CStr(2) & "]")
+                    For Indice = 0 To 23
+                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(Indice) & "]", 0)
                     Next Indice
+
+                    ' Se ordenan las correlaciones de menor diferencia de presion a mayor diferencia DifPwf
+                    Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
+
+
+                    '' Se seleccionan la correlaciones del mejor ajuste 'MIgrado a VLPIPR
+                    'DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                    'DoCmd("PROSPER.ANL.VMT.CALC")
+
+                    CorrVFP = NumCor(0)
+                    CorrIndex = NumCor(0)
+
+                    Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
+                    '' DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0)) & ",0)") AL PARECER SE LLAMA EN LA FUNCION VLP_IPR()
+
+
+
+
+
+
+
+
+                    ''' Se des seleccionan todas las correlaciones en "VLP Maching - Adjust IPR"
+                    'For Indice = 0 To 23
+                    '    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(Indice) & "]", 0)
+                    'Next Indice
+                    ''Prosper.ANL.VMT.Corr
+                    '' Se selecciona la mejor correlacion
+                    'DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                    'DoCmd("PROSPER.ANL.VMT.CALC")
+                    'If Settings.GetBy("prosper_version") = "IPM 7.5" Then
+                    '    DoCmd("PROSPER.ANL.VMT.CALC")
+                    'End If
+
+                    'CorrVFP = NumCor(0)
+                    'CorrIndex = NumCor(0)
+
+                    'Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
+                    'DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0) + 1) & ",1)")
                 End If
 
 
-                'MsgBox(TmpNomC(0) & " : " & MsgTmp(0, 0) & MsgTmp(0, 1) & MsgTmp(0, 2) & Chr(13) & _
-                '       TmpNomC(1) & " : " & MsgTmp(1, 0) & MsgTmp(1, 1) & MsgTmp(1, 2) & Chr(13) & _
-                '       TmpNomC(2) & " : " & MsgTmp(2, 0) & MsgTmp(2, 1) & MsgTmp(2, 2))
 
 
-                '' Se des seleccionan todas las correlaciones en "VLP Maching - Adjust IPR"
-                For Indice = 0 To 23
-                    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(Indice) & "]", 0)
-                Next Indice
-
-                ' Se selecciona la mejor correlacion
-                DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
-                If Settings.GetBy("prosper_version") = "IPM 7.5" Then
-                    DoCmd("PROSPER.ANL.VMT.CALC")
-                End If
-
-                CorrVFP = NumCor(0)
-
-                Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
-                DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0) + 1) & ",1)")
-
+                Return True
             Catch ex As Exception
-                Throw New Exception("Compara_Correlaciones_BN: " + ex.Message)
+                Throw New Exception("Compara Correlaciones: " + ex.Message)
             End Try
-
-
         End Function
-
         Private Function Compara_Correlaciones_BEC() As Boolean
 
 
             Try
-                ' Ajuste VLP/IPR. 
-                ' La sub rutina únicamente ajusta un solo juego de valores
-                ' por lo que sólo se usa: DATA[0]
-
                 Dim RATETYPE, ENABLE As Integer
                 Dim VLPLABEL As String = ""
                 Dim Htc As Double
@@ -2817,46 +3874,110 @@ Public Class Crea
                 ' Etiqueta
                 VLPLABEL = "Prof. Estabilizacion"
 
-                DoSet("PROSPER.ANL.VMT.RATETYPE", RATETYPE)
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].ENABLE", ENABLE)
-                DoSet("PROSPER.ANL.VMT.Data[" & CStr(0) & "].label", VLPLABEL) ' "Prof. Estabilidad")
 
-                ' Presion en la cabeza del pozo (Pth)
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THPRES", THPres.Val)
-                ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THTEMP", THTemp.Val)
-                ' Corte de Agua. (Relación agua aceite WC)
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].WC", Wc.Val)
-                ' Produccion de liquido
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].RATE", QTest.Val)
-                ' Profundidad de medicion de la Pwf
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GDEPTH", Prof_BEC.Val)
-                ' Presion de fondo fluyendo a la profundad de la medición
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GPRES", PreDes_BEC.Val)
-                ' Presion de fondo estática (Pws) a la profundidad de la medición
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].PRES", PRes.Val)
-                ' Relación gas aceite
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GOR", GOR_PTy)
-                ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
-                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GORFREE", GORFree)
-                'Freccuencia de operación 
-                DoSet("PROSPER.ANL.VMT.Data[0].Freq", Frec_BEC.Val)
-                'Factor de desgaste de la bomba
-                DoSet("PROSPER.ANL.VMT.Data[0].Wear", Desgaste_BEC.Val)
-                'Presión de succión de la bomba
-                DoSet("PROSPER.ANL.VMT.Data[0].PIP", PreSuc_BEC.Val)
-                'Presión de descarga de la bomba
-                DoSet("PROSPER.ANL.VMT.Data[0].PDP", PreDes_BEC.Val)
+                If Equipment Then
+                    Dim TotalTests As Integer = DoGet("PROSPER.ANL.VMT.DATA.COUNT")
+
+
+
+                    If TotalTests = 0 Then
+                        Throw New Exception("No hay tests disponibles")
+                    End If
+
+                    For i = 0 To TotalTests - 1
+
+                        Dim Enabled As Integer = DoGet("PROSPER.ANL.VMT.Data[" + i.ToString() + "].Enable")
+
+                        If Enabled = 0 Then
+                            TestIndex = i
+                        End If
+
+                    Next
+
+                    ' Presion en la cabeza del pozo (Pth)
+                    THPres.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].THPRES")
+                    ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
+                    THTemp.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].THTEMP")
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    Wc.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].WC")
+                    ' Produccion de liquido
+                    QTest.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].RATE")
+                    ' Profundidad de medicion de la Pwf
+                    Prof_BEC.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GDEPTH")
+                    ' Presion de fondo fluyendo a la profundad de la medición
+                    PreDes_BEC.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GPRES")
+                    ' Presion de fondo estática (Pws) a la profundidad de la medición
+                    PRes.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].PRES")
+                    ' Relación gas aceite
+                    GOR_PTy = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GOR")
+                    ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
+                    GORFree = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GORFREE")
+                    'Freccuencia de operación 
+                    Frec_BEC.Val = DoGet("PROSPER.ANL.VMT.Data[" + TestIndex.ToString() + "].Freq")
+                    'Factor de desgaste de la bomba
+                    Desgaste_BEC.Val = DoGet("PROSPER.ANL.VMT.Data[" + TestIndex.ToString() + "].Wear")
+                    'Presión de succión de la bomba
+                    PreSuc_BEC.Val = DoGet("PROSPER.ANL.VMT.Data[" + TestIndex.ToString() + "].PIP")
+                    'Presión de descarga de la bomba
+                    PreDes_BEC.Val = DoGet("PROSPER.ANL.VMT.Data[" + TestIndex.ToString() + "].PDP")
+
+                    RGA_Aforo.Val = GORFree + GOR_PTy
+                Else
+
+                    'NECESARIO PARA VLP - IPR
+                    '==========================================================================================
+                    DoSet("PROSPER.ANL.VMT.RATETYPE", RATETYPE)
+                    DoSet("PROSPER.ANL.VMT.DATA[0].ENABLE", ENABLE)
+                    DoSet("PROSPER.ANL.VMT.Data[0].label", VLPLABEL) ' "Prof. Estabilidad")
+
+                    ' Presion en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.VMT.DATA[0].THPRES", THPres.Val)
+                    ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
+                    DoSet("PROSPER.ANL.VMT.DATA[0].THTEMP", THTemp.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.VMT.DATA[0].WC", Wc.Val)
+                    ' Produccion de liquido
+                    DoSet("PROSPER.ANL.VMT.DATA[0].RATE", QTest.Val)
+                    ' Profundidad de medicion de la Pwf
+                    DoSet("PROSPER.ANL.VMT.DATA[0].GDEPTH", Prof_BEC.Val)
+                    ' Presion de fondo fluyendo a la profundad de la medición
+                    DoSet("PROSPER.ANL.VMT.DATA[0].GPRES", PreDes_BEC.Val)
+                    ' Presion de fondo estática (Pws) a la profundidad de la medición
+                    DoSet("PROSPER.ANL.VMT.DATA[0].PRES", PRes.Val)
+                    ' Relación gas aceite
+                    DoSet("PROSPER.ANL.VMT.DATA[0].GOR", GOR_PTy)
+                    ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
+                    DoSet("PROSPER.ANL.VMT.DATA[0].GORFREE", GORFree)
+                    'Freccuencia de operación 
+                    DoSet("PROSPER.ANL.VMT.Data[0].Freq", Frec_BEC.Val)
+                    'Factor de desgaste de la bomba
+                    DoSet("PROSPER.ANL.VMT.Data[0].Wear", Desgaste_BEC.Val)
+                    'Presión de succión de la bomba
+                    DoSet("PROSPER.ANL.VMT.Data[0].PIP", PreSuc_BEC.Val)
+                    'Presión de descarga de la bomba
+                    DoSet("PROSPER.ANL.VMT.Data[0].PDP", PreDes_BEC.Val)
+
+                    TestIndex = 0
+
+                End If
+
+                If QTest.Val < QTest.Min Then
+                    Throw New Exception("Producción de liquido debe ser al menos " + QTest.Min.ToString())
+                End If
+
 
                 ' Se actualizan algunos cambios
                 DoCmd("PROSPER.Refresh")
                 ' Se procede a realizar el ajuste 
                 DoCmd("PROSPER.ANL.VMT.UVAL")
 
-                Htc = DoGet("Prosper.ANL.VMT.Data[" & CStr(0) & "].Uvalue")
+                Htc = DoGet("Prosper.ANL.VMT.Data[" + TestIndex.ToString() + "].Uvalue")
 
                 DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
 
+
+                'COMPARACION DE CORRELACIONES
+                '====================================================================================
                 ' Comparación de correlaciones
                 ' Presión en la cabeza del pozo (Pth)
                 DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
@@ -2925,8 +4046,8 @@ Public Class Crea
                 ' 15      OLGAS3P
                 ' 16      OLGAS3PEXT
 
-                For I = 0 To 9 ' Solo hasta petroleum Expert 3
-                    DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 1)
+                For I = 0 To NumCorr.Val - 1  ' Solo hasta petroleum Expert 3
+                    DoSet("PROSPER.ANL.TCC.Corr[" + I.ToString() + "]", 1)
                 Next I
 
                 ''NUEVO MARDOQUEO
@@ -2938,10 +4059,10 @@ Public Class Crea
                 ''TERMINA NUEVO MARDOQUEO
 
                 ' Datos medidos
-                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
-                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", Prof_BEC.Val)
-                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
-                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", PreDes_BEC.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[0].Msd", TCCMsd)
+                DoSet("PROSPER.ANL.TCC.Comp[1].Msd", Prof_BEC.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[0].Prs", THPres.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[1].Prs", PreDes_BEC.Val)
 
                 'For i = 0 To 9
                 '    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(i) & "]", 1)
@@ -2949,20 +4070,7 @@ Public Class Crea
 
                 DoCmd("PROSPER.ANL.TCC.CALC")
 
-                ' Resultados de Comparación de Correlaciones 
-                '
-                'Dim Indice, J As Integer
-                'Dim IndiceTmp As String
-                ''ReDim NumCor(NumCorr.Val - 1)
-                ''ReDim ProfDesa(,)
-                ''ReDim TVDCC(NumCorr.Val - 1, 100)
-                ''ReDim PresWf(NumCorr.Val - 1, 100)
-                'ReDim NumDatCorr(NumCorr.Val - 1)
-                'ReDim NomCorr(NumCorr.Val - 1)
-                'ReDim NumCor(NumCorr.Val - 1)
-                'Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
-                'Dim LabelCC(,) As String
-                'Dim TempCC(,) As Double
+
 
                 Dim Indice, J As Integer
                 Dim IndiceTmp As String
@@ -2976,26 +4084,28 @@ Public Class Crea
                 Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
                 Dim LabelCC(NumCorr.Val - 1, 10) As String
                 Dim TempCC(NumCorr.Val - 1, 10) As Double
-
                 TMSDCC = Int(0)
                 ' Resultados: Escribe en la hoja comparacion de correlaciones
                 Dim max As Integer = 0
                 For Indice = 0 To NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
                     Dim ind As Boolean = True
                     IndiceTmp = CStr(IndiceCorr(Indice))
-                    J = 0
 
 
-                    Do Until (TMSDCC >= Math.Round(NivMedDisp.Val, 0)) ' For j = 1 To 100
+                    Dim TotalCorrs As Integer = Integer.Parse(DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp + "].COUNT"))
 
-                        If J > max Then
-                            max = J
-                            ReDim Preserve LabelCC(NumCorr.Val - 1, J)
-                            ReDim Preserve ProfDesa(NumCorr.Val - 1, J)
-                            ReDim Preserve TVDCC(NumCorr.Val - 1, J)
-                            ReDim Preserve PresWf(NumCorr.Val - 1, J)
-                            ReDim Preserve TempCC(NumCorr.Val - 1, J)
-                        End If
+                    If TotalCorrs > max Then
+                        max = TotalCorrs
+                        ReDim Preserve LabelCC(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve ProfDesa(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve TVDCC(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve PresWf(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve TempCC(NumCorr.Val - 1, max - 1)
+                    End If
+
+                    For J = 0 To TotalCorrs - 1 'Do Until (TMSDCC >= Math.Round(NivMedDisp.Val, 0)) ' For j = 1 To 100
+
+
 
 
 
@@ -3020,31 +4130,32 @@ Public Class Crea
                             DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
                             ind = False
                         End If
-                    Loop
+                    Next
                     NumCor(Indice) = Indice
                     NomCorr(Indice) = NombrCorr(Indice)
                     ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
                     TMSDCC = 0
                 Next Indice
-
                 Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
 
                 'Se limpia la correlaciones
-                For i = 0 To 9
-                    DoSet("PROSPER.ANL.VMT.Corr[" & i & "]", 0)
+                For i = 0 To NumCorr.Val - 1
+                    DoSet("PROSPER.ANL.VMT.Corr[" + i.ToString() + "]", 0)
                 Next i
+
+
                 ' Se seleccionan la correlaciones del mejor ajuste
                 DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
                 DoCmd("PROSPER.ANL.VMT.CALC")
 
                 'Se selecciona la correlación ya ajustada
-                For I = 0 To 9 ' Solo hasta petroleum Expert 3
+                For I = 0 To NumCorr.Val - 1 ' Solo hasta petroleum Expert 3
                     DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 0)
                 Next I
 
                 DoSet("PROSPER.ANL.TCC.Corr[" & NumCor(0) & "]", 1)
                 DoCmd("PROSPER.ANL.TCC.CALC")
-                Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & IndiceCorr(NumCor(0)) & "].Pres[160]")
+                Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & IndiceCorr(NumCor(0)) & "].Pres[" + max.ToString() + "]")
                 DoSet("PROSPER.SIN.IPR.Single.Ptest", Pwfcalc)
                 DoCmd("PROSPER.IPR.CALC")
 
@@ -3060,13 +4171,288 @@ Public Class Crea
 
                 'Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
                 DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0) + 1) & ",0)")
+                FlagTcc = DoGet("PROSPER.OUT.TCC.DONE")
+                Return True
+            Catch ex As Exception
+                Throw New Exception("TCC: " + ex.Message)
+            End Try
+        End Function
+
+        Private Function Compara_Correlaciones_BEC_() As Boolean
+
+
+            Try
+                ' Ajuste VLP/IPR. 
+                ' La sub rutina únicamente ajusta un solo juego de valores
+                ' por lo que sólo se usa: DATA[0]
+
+                Dim RATETYPE, ENABLE As Integer
+                Dim VLPLABEL As String = ""
+                Dim Htc As Double
+                Dim TCCMsd, TMSDCC As Double
+
+                ' Tipo de fluido producido -> 0: Liquido, 1: Aceite, 2: Gas.
+                RATETYPE = 0
+                ' Habilitar/Desabilitar los valores de DATA[i].
+                ENABLE = 0
+                ' Etiqueta
+                VLPLABEL = "Prof. Estabilizacion"
+                FlagTcc = DoGet("PROSPER.OUT.TCC.DONE")
+
+
+
+                DoSet("PROSPER.ANL.VMT.RATETYPE", RATETYPE)
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].ENABLE", ENABLE)
+                    DoSet("PROSPER.ANL.VMT.Data[" & CStr(0) & "].label", VLPLABEL) ' "Prof. Estabilidad")
+
+                    ' Presion en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THPRES", THPres.Val)
+                    ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THTEMP", THTemp.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].WC", Wc.Val)
+                    ' Produccion de liquido
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].RATE", QTest.Val)
+                    ' Profundidad de medicion de la Pwf
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GDEPTH", Prof_BEC.Val)
+                    ' Presion de fondo fluyendo a la profundad de la medición
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GPRES", PreDes_BEC.Val)
+                    ' Presion de fondo estática (Pws) a la profundidad de la medición
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].PRES", PRes.Val)
+                    ' Relación gas aceite
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GOR", GOR_PTy)
+                    ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
+                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GORFREE", GORFree)
+                    'Freccuencia de operación 
+                    DoSet("PROSPER.ANL.VMT.Data[0].Freq", Frec_BEC.Val)
+                    'Factor de desgaste de la bomba
+                    DoSet("PROSPER.ANL.VMT.Data[0].Wear", Desgaste_BEC.Val)
+                    'Presión de succión de la bomba
+                    DoSet("PROSPER.ANL.VMT.Data[0].PIP", PreSuc_BEC.Val)
+                    'Presión de descarga de la bomba
+                    DoSet("PROSPER.ANL.VMT.Data[0].PDP", PreDes_BEC.Val)
+
+                    ' Se actualizan algunos cambios
+                    DoCmd("PROSPER.Refresh")
+                    ' Se procede a realizar el ajuste 
+                    DoCmd("PROSPER.ANL.VMT.UVAL")
+
+                    Htc = DoGet("Prosper.ANL.VMT.Data[" & CStr(0) & "].Uvalue")
+
+                    DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
+
+                    ' Comparación de correlaciones
+                    ' Presión en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
+                    ' Producción de liquido
+                    DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
+                    ' Relación gas aceite
+                    DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
+                    ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
+                    DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
+
+                    ' Tipo de producción
+                    ' 0 : Producción de liquido
+                    ' 1 : Producción de aceite
+                    DoSet("PROSPER.ANL.TCC.RateType", 0)
+
+                    '
+                    ' Correlación de la linea de descarga
+                    '
+                    ' 2  FancherBrown
+                    ' 4  MukerjeeBrill
+                    ' 5  BeggsandBrill
+                    ' 6  DuklerFlannigan
+                    ' 7  DuklerEatonFlannigan
+                    ' 13 BeggsandBrillGasHead
+                    ' 14 GREmodifiedbyPE
+                    ' 15 GREwithDSM
+                    ' 16 GREoriginal
+                    ' 17 GREwithAE
+                    ' 18 PetroleumExperts4
+                    ' 19 Hydro3P
+                    ' 20 PetroleumExperts5
+                    ' 21 OLGAS2P
+                    ' 22 OLGAS3P
+                    ' 23 OLGAS3PEXT
+                    '
+                    DoSet("PROSPER.ANL.TCC.Pipe", 5)
+
+                    ' EMR del estadomecánico
+                    TCCMsd = 0
+
+                    ' Datos medidos
+                    'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
+                    'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", Prof_BEC.Val)
+                    'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
+                    'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
+
+                    ' Use the following list to to determine the value of corrname to select the correlation by name
+                    '
+                    ' 0       PROSPER.ANL.VMT.Data[0].PIP
+                    ' 1       HagedornBrown
+                    ' 2       FancherBrown
+                    ' 3       MukerjeeBrill
+                    ' 4       BeggsandBrill
+                    ' 5       PetroleumExperts
+                    ' 6       Orkiszewski
+                    ' 7       PetroleumExperts2
+                    ' 8       DunsandRosOriginal
+                    ' 9       PetroleumExperts3
+                    ' 10      GREmodifiedbyPE
+                    ' 11      PetroleumExperts4
+                    ' 12      Hydro3P
+                    ' 13      PetroleumExperts5
+                    ' 14      OLGAS2P
+                    ' 15      OLGAS3P
+                    ' 16      OLGAS3PEXT
+
+                    For I = 0 To 9 ' Solo hasta petroleum Expert 3
+                        DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 1)
+                    Next I
+
+                    ''NUEVO MARDOQUEO
+                    'DoSet("PROSPER.ANL.TCC.Corr[" & NumCor(0) & "]", 1)
+                    'DoCmd("PROSPER.ANL.TCC.CALC")
+                    'Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & NumCor(0) & "].Pres[160]")
+                    'DoSet("PROSPER.SIN.IPR.Single.Ptest", Pwfcalc)
+                    'DoCmd("PROSPER.IPR.CALC")
+                    ''TERMINA NUEVO MARDOQUEO
+
+                    ' Datos medidos
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", Prof_BEC.Val)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
+                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", PreDes_BEC.Val)
+
+                    'For i = 0 To 9
+                    '    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(i) & "]", 1)
+                    'Next i
+
+                    DoCmd("PROSPER.ANL.TCC.CALC")
+
+                    ' Resultados de Comparación de Correlaciones 
+                    '
+                    'Dim Indice, J As Integer
+                    'Dim IndiceTmp As String
+                    ''ReDim NumCor(NumCorr.Val - 1)
+                    ''ReDim ProfDesa(,)
+                    ''ReDim TVDCC(NumCorr.Val - 1, 100)
+                    ''ReDim PresWf(NumCorr.Val - 1, 100)
+                    'ReDim NumDatCorr(NumCorr.Val - 1)
+                    'ReDim NomCorr(NumCorr.Val - 1)
+                    'ReDim NumCor(NumCorr.Val - 1)
+                    'Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
+                    'Dim LabelCC(,) As String
+                    'Dim TempCC(,) As Double
+
+                    Dim Indice, J As Integer
+                    Dim IndiceTmp As String
+                    ReDim NumCor(NumCorr.Val - 1)
+                    ReDim ProfDesa(NumCorr.Val - 1, 10)
+                    ReDim TVDCC(NumCorr.Val - 1, 10)
+                    ReDim PresWf(NumCorr.Val - 1, 10)
+                    ReDim NumDatCorr(NumCorr.Val - 1)
+                    ReDim NomCorr(NumCorr.Val - 1)
+                    'Dim NumCor(NumCorr.Val - 1) As Integer
+                    Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
+                    Dim LabelCC(NumCorr.Val - 1, 10) As String
+                    Dim TempCC(NumCorr.Val - 1, 10) As Double
+
+                    TMSDCC = Int(0)
+                    ' Resultados: Escribe en la hoja comparacion de correlaciones
+                    Dim max As Integer = 0
+                    For Indice = 0 To NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
+                        Dim ind As Boolean = True
+                        IndiceTmp = CStr(IndiceCorr(Indice))
+                        J = 0
+
+
+                        Do Until (TMSDCC >= Math.Round(NivMedDisp.Val, 0)) ' For j = 1 To 100
+
+                            If J > max Then
+                                max = J
+                                ReDim Preserve LabelCC(NumCorr.Val - 1, J)
+                                ReDim Preserve ProfDesa(NumCorr.Val - 1, J)
+                                ReDim Preserve TVDCC(NumCorr.Val - 1, J)
+                                ReDim Preserve PresWf(NumCorr.Val - 1, J)
+                                ReDim Preserve TempCC(NumCorr.Val - 1, J)
+                            End If
+
+
+
+                            LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
+                            ' Profundidad desarrollada
+                            ProfDesa(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(J) & "]")
+                            ' Profundidad vertical
+                            TVDCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].TVD[" & CStr(J) & "]")
+                            ' Presion
+                            PresWf(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Pres[" & CStr(J) & "]")
+                            ' Temperatura
+                            TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
+
+
+                            TMSDCC = ProfDesa(Indice, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
+                            TMSDCC = Math.Round(TMSDCC, 0)
+                            NumDatCorr(Indice) = J
+                            J = J + 1
+                            If (TMSDCC >= Math.Round(Prof_BEC.Val, 0) And ind = True) Then
+                                ' Presion en el intevalo medio productor
+                                PwfCC(Indice) = PresWf(Indice, J - 1)
+                                DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
+                                ind = False
+                            End If
+                        Loop
+                        NumCor(Indice) = Indice
+                        NomCorr(Indice) = NombrCorr(Indice)
+                        ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
+                        TMSDCC = 0
+                    Next Indice
+
+                    Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
+
+                    'Se limpia la correlaciones
+                    For i = 0 To 9
+                        DoSet("PROSPER.ANL.VMT.Corr[" & i & "]", 0)
+                    Next i
+                    ' Se seleccionan la correlaciones del mejor ajuste
+                    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                    DoCmd("PROSPER.ANL.VMT.CALC")
+
+                    'Se selecciona la correlación ya ajustada
+                    For I = 0 To 9 ' Solo hasta petroleum Expert 3
+                        DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 0)
+                    Next I
+
+                    DoSet("PROSPER.ANL.TCC.Corr[" & NumCor(0) & "]", 1)
+                    DoCmd("PROSPER.ANL.TCC.CALC")
+                Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & IndiceCorr(NumCor(0)) & "].Pres[160]") 'tENIA 160
+                DoSet("PROSPER.SIN.IPR.Single.Ptest", Pwfcalc)
+                    DoCmd("PROSPER.IPR.CALC")
+
+
+                    '' Se des seleccionan todas las correlaciones en "VLP Maching - Adjust IPR"
+                    For Indice = 0 To 23
+                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(Indice) & "]", 0)
+                    Next Indice
+
+                    ' Se selecciona la mejor correlacion
+                    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                    CorrVFP = NumCor(0)
+
+                    'Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
+                    DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0) + 1) & ",0)")
                 'DoCmd("PROSPER.ANL.VMT.VLPIPR(1,0)")
+
+
 
 
 
                 Return True
             Catch ex As Exception
-                Throw New Exception("Compara_Correlaciones_BEC: " + ex.Message)
+                Throw New Exception("Correlaciones BEC: " + ex.Message)
             End Try
 
         End Function
@@ -3083,46 +4469,103 @@ Public Class Crea
                 ReDim VLPIPR_PWF(1, 19)
 
                 Dim version = Settings.GetBy("prosper_version")
+                Dim Ptest As Double = 0
 
 
                 If version = "IPM 7.5" Then
                     'V7.5
+                    If Equipment = False Then DoCmd("PROSPER.ANL.VMT.VLPIPR")
+
                     For I = 0 To 19
                         ' QL bl / dia
-                        ValAux = DoGet("PROSPER.OUT.VIM.Results[0].Rate[0][" & CStr(I) & "]")
+                        ValAux = DoGet("PROSPER.OUT.VIM.Results[0].Rate[0][" + I.ToString() + "]")
                         VLPIPR_RTEL(0, I) = ValAux : VLPIPR_RTEL(1, I) = ValAux
                         ' Qo bl / dia
                         ' Pwf kg/cm2  VLP -> Tubería
                         VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Results[0].VLPPres[0][" & CStr(I) & "]")
                         ' Pwf kg/cm2  IPR Yacimiento
                         VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Results[0].IPRPres[0][" & CStr(I) & "]")
+
                     Next I
                 Else
                     'V11
-                    For I = 0 To 19
-                        ' QL bl / dia
-                        Dim qwater As Double = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].WatRate[" & CStr(I) & "]")
-                        ValAux = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].OilRate[" & CStr(I) & "]") + qwater
-                        VLPIPR_RTEL(0, I) = ValAux : VLPIPR_RTEL(1, I) = ValAux
-                        ' Qo bl / dia
-                        ' Pwf kg/cm2  VLP -> Tubería
-                        VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].VLPpres[" & CStr(I) & "]") / 14.22
-                        ' Pwf kg/cm2  IPR Yacimiento
-                        VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].IPRpres[" & CStr(I) & "]") / 14.22
-                    Next I
+                    If Equipment Then
+                        'PROSPER.ANL.VMT.VLPIPR(12,4)
+                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                        DoCmd("PROSPER.ANL.VMT.CALC")
+                        DoCmd("PROSPER.ANL.VMT.VLPIPR(" + (CorrIndex + 1).ToString() + "," + (TestIndex + 1).ToString() + ")")
+                        'PROSPER.OUT.VIM.Correlations[11].Test[3].OilRate[5]
+                        For I = 0 To 19
+                            ' QL bl / dia
+                            Dim qwater As Double = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].WatRate[" & CStr(I) & "]")
+                            ValAux = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].OilRate[" & CStr(I) & "]") + qwater
+                            VLPIPR_RTEL(0, I) = ValAux : VLPIPR_RTEL(1, I) = ValAux
+                            ' Qo bl / dia
+                            ' Pwf kg/cm2  VLP -> Tubería
+                            VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].VLPpres[" & CStr(I) & "]") / 14.22
+                            ' Pwf kg/cm2  IPR Yacimiento
+                            VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].IPRpres[" & CStr(I) & "]") / 14.22
+                        Next I
+
+                    Else
+                        ' Se seleccionan la correlaciones del mejor ajuste
+                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                        DoCmd("PROSPER.ANL.VMT.CALC")
+                        DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(CorrIndex + 1) & ",1)")
+
+                        For I = 0 To 19
+                            ' QL bl / dia
+                            Dim qwater As Double = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].WatRate[" & CStr(I) & "]")
+                            ValAux = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].OilRate[" & CStr(I) & "]") + qwater
+                            VLPIPR_RTEL(0, I) = ValAux : VLPIPR_RTEL(1, I) = ValAux
+                            ' Qo bl / dia
+                            ' Pwf kg/cm2  VLP -> Tubería
+                            VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].VLPpres[" & CStr(I) & "]") / 14.22
+                            ' Pwf kg/cm2  IPR Yacimiento
+                            VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].IPRpres[" & CStr(I) & "]") / 14.22
+                        Next I
+
+
+
+                    End If
+
+
 
 
                 End If
 
-                Dim Ptest As Double = DoGet("PROSPER.OUT.VIM.Results[0].TestPres[0]")
-                DoSet("PROSPER.SIN.IPR.Single.Ptest", Ptest)
-                DoCmd("PROSPER.IPR.CALC")
+                'REVISAR SI ESTA DE MAS ESTA FUNCION
+                'Ptest = DoGet("PROSPER.OUT.VIM.Results[0].TestPres[0]")
 
+                'If Equipment = False Then
+                '    DoSet("PROSPER.SIN.IPR.Single.Ptest", Ptest)
+                '    DoCmd("PROSPER.IPR.CALC")
+                'End If
+
+                FlagVlpIpr = 1
                 Return True
+
             Catch ex As Exception
+                FlagVlpIpr = 0
                 Throw New Exception("VLPIPR:" + ex.Message)
             End Try
 
+        End Function
+
+        Private Function Rate() As Boolean
+            Try
+                Dim QgiOper As Double = DoGet("PROSPER.SIN.GLF.GLRate")
+                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Clear", "")
+                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[].RESET", "")
+                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[0]", QgiOper)
+                DoCmd("PROSPER.ANL.SYS.CALC")
+                Qo.Val = DoGet("PROSPER.OUT.SYS.Results[0][0][0].Sol.OilRate")
+                Qg.Val = DoGet("PROSPER.OUT.SYS.Results[0][0][0].Sol.GasRate")
+                Qw.Val = DoGet("PROSPER.OUT.SYS.Results[0][0][0].Sol.WatRate")
+                Return True
+            Catch ex As Exception
+                Throw New Exception(ex.Message)
+            End Try
         End Function
 
         ''' <summary>
@@ -3130,131 +4573,183 @@ Public Class Crea
         ''' </summary>
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Private Function Sensibilidad_BN() As Boolean
-            ' Curva del comportamiento del gas de BN
-
-            ' Analisis de Sensibilidad para el gas de Inyección
-            ' Empleando el modulo -> System 3 Variables
-
-            ' Presión en la cabeza del pozo (Pth)
-            DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
-            ' Corte de Agua. (Relación agua aceite WC)
-            DoSet("PROSPER.ANL.SYS.WC", Wc.Val)
-            ' Relación gas aceite total
-            DoSet("PROSPER.ANL.SYS.GOR", GOR_Total)
-
-            '   You can also use the following syntax to reference the correlation by label
-            '
-            ' PROSPER.ANL.SYS.TubingLabel
-            '
-            ' Use the following list to select the correlation by name
-            '
-            ' 0       DunsandRosModified
-            ' 1       HagedornBrown
-            ' 2       FancherBrown
-            ' 4       MukerjeeBrill
-            ' 5       BeggsandBrill
-            ' 8       PetroleumExperts
-            ' 9       Orkiszewski
-            ' 10      PetroleumExperts2
-            ' 11      DunsandRosOriginal
-            ' 12      PetroleumExperts3
-            ' 14      GREmodifiedbyPE
-            ' 18      PetroleumExperts4
-            ' 19      Hydro3P
-            ' 20      PetroleumExperts5
-            ' 21      OLGAS2P
-            ' 22      OLGAS3P
-            ' 23      OLGAS3PEXT
-
-            ' Correlación de flujo multifásico Vertical
-            DoSet("PROSPER.ANL.SYS.Tubing", CorrVFP)
-
-            ' Sensitivity Variables
-            '
-            ' Type    Index   Variable Name
-            ' --------------------------------------------------------------
-            '  1	  1	Reservoir Pressure
-            ' 53	  2	Reservoir Temperature
-            ' 51	  7	Reservoir Permeability
-            ' 56	  8	Reservoir Thickness
-            ' 57	  9	Drainage Area
-            ' 58	 10	Dietz Shape Factor
-            ' 59	 11	Wellbore Radius
-            ' 16	  6	Water Cut
-            ' 17	131	Gas Oil Ratio
-            '  2	 27	Skin
-            ' 40	155	Water Oil Ratio
-            ' 19	156	Condensate Gas Ratio
-            ' 24	132	GLR Free
-            ' 25	133	Free Gas Rate
-            ' 33	134	GOR Free
-            ' 20	135	Total GOR
-            ' 39	136	Dissolved and Free GLR
-            ' 35	148	Operating Frequency
-            ' 36	149	Gas Separator Efficiency
-            ' 37	150	Pump Wear Factor
-            ' 38	151	Pump Depth (Measured)
-            ' 41	157	Number of Stages
-            ' 27	145	First Node Pressure
-            ' 26	144	Tubing Roughness
-            '334	195	Downhole Heat Transfer Coefficient
-            ' 21	147	Tubing/Pipe Diameter
-            '341	202	Downhole Equipment
-            '342	203	Surface Equipment
-            '
-            '
-            ' Use      DoSet PROSPER.ANL.SYS.Sens.SensDB.Clear
-            '          to reset ALL sensitivity variable Information
+            Try
+                If Equipment Then
 
 
-            'Se selecciona como parametro de sensibilidad el gasto de gas de inyección
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[0]", 22)
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[1]", 16)
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[2]", 1)
+                    Dim WcVec(9) As Double
+                    ReDim QliqVLP(9, 19)
+                    ReDim PwfVLP(9, 19)
+                    ReDim QgiVec(9)
+                    ReDim QliqVec(9)
 
-            '*** Limpiar los datos anteriores
-            ' Qgi
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[].RESET", "")
-            ' WC
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[].RESET", "")
-            ' Pws
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[].RESET", "")
+                    ResultSystemVar({"LiqRate"})
 
-            '
-            ' Se generan los 10 valores de Qgi
-            ' En 2 corridas se generan 20 valores de WC
-            '
-            'Dim Delta_Wc, Wc_Max, Wc_Min As Double
-            Dim Delta_Qgi As Double
-            Dim WcVec(9) As Double
-            ReDim QliqVLP(9, 19)
-            ReDim PwfVLP(9, 19)
-            ReDim QgiVec(9)
-            ReDim QliqVec(9)
+                    If LiqRate.Count() > 0 Then
+                        For j = 0 To LiqRate.Count() - 1
+                            QliqVec(j) = DoGet("PROSPER.OUT.SYS.Results[" & j & "].Sol.LiqRate")
+                        Next j
+                        For i = 0 To LiqRate.Count() - 1
+                            For j = 0 To 19
+                                QliqVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "].LiqRate[" & j & "]")
+                                PwfVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "].VLPpres[" & j & "]")
+                            Next j
+                        Next i
+                    End If
 
-            Delta_Qgi = (QgiMax.Val - QgiMin.Val) / (10 - 1)
-            For I = 0 To 9
-                QgiVec(I) = QgiMin.Val + I * Delta_Qgi
-                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & I & "]", QgiVec(I))
-            Next I
-            '  Wc
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[0]", Wc.Val)
+                    'Extraccion QGIMIN y QGIMAX
+                    If SensVarsVal.Keys.Contains(138) Then
+                        For i = 0 To SensVarsVal(138).Count - 1
+                            QgiVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & i & "]")
+                        Next i
 
-            ' Pws
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[0]", PRes.Val)
+                        QgiMin.Val = SensVarsVal(138)(0)
+                        QgiMax.Val = SensVarsVal(138)(SensVarsVal(138).Count - 1)
 
-            ' Se realizan los calculos
-            DoCmd("PROSPER.ANL.SYS.CALC")
+                    End If
 
-            For j = 0 To 9
-                QliqVec(j) = DoGet("PROSPER.OUT.SYS.Results[" & j & "][0][0].Sol.LiqRate")
-            Next j
-            For i = 0 To 9
-                For j = 0 To 19
-                    QliqVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].LiqRate[" & j & "]")
-                    PwfVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].VLPpres[" & j & "]")
-                Next j
-            Next i
+
+
+
+
+                Else
+
+
+                    ' Curva del comportamiento del gas de BN
+
+                    ' Analisis de Sensibilidad para el gas de Inyección
+                    ' Empleando el modulo -> System 3 Variables
+
+                    ' Presión en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.SYS.WC", Wc.Val)
+                    ' Relación gas aceite total
+                    DoSet("PROSPER.ANL.SYS.GOR", GOR_Total)
+
+                    '   You can also use the following syntax to reference the correlation by label
+                    '
+                    ' PROSPER.ANL.SYS.TubingLabel
+                    '
+                    ' Use the following list to select the correlation by name
+                    '
+                    ' 0       DunsandRosModified
+                    ' 1       HagedornBrown
+                    ' 2       FancherBrown
+                    ' 4       MukerjeeBrill
+                    ' 5       BeggsandBrill
+                    ' 8       PetroleumExperts
+                    ' 9       Orkiszewski
+                    ' 10      PetroleumExperts2
+                    ' 11      DunsandRosOriginal
+                    ' 12      PetroleumExperts3
+                    ' 14      GREmodifiedbyPE
+                    ' 18      PetroleumExperts4
+                    ' 19      Hydro3P
+                    ' 20      PetroleumExperts5
+                    ' 21      OLGAS2P
+                    ' 22      OLGAS3P
+                    ' 23      OLGAS3PEXT
+
+                    ' Correlación de flujo multifásico Vertical
+                    DoSet("PROSPER.ANL.SYS.Tubing", CorrVFP)
+
+                    ' Sensitivity Variables
+                    '
+                    ' Type    Index   Variable Name
+                    ' --------------------------------------------------------------
+                    '  1	  1	Reservoir Pressure
+                    ' 53	  2	Reservoir Temperature
+                    ' 51	  7	Reservoir Permeability
+                    ' 56	  8	Reservoir Thickness
+                    ' 57	  9	Drainage Area
+                    ' 58	 10	Dietz Shape Factor
+                    ' 59	 11	Wellbore Radius
+                    ' 16	  6	Water Cut
+                    ' 17	131	Gas Oil Ratio
+                    '  2	 27	Skin
+                    ' 40	155	Water Oil Ratio
+                    ' 19	156	Condensate Gas Ratio
+                    ' 24	132	GLR Free
+                    ' 25	133	Free Gas Rate
+                    ' 33	134	GOR Free
+                    ' 20	135	Total GOR
+                    ' 39	136	Dissolved and Free GLR
+                    ' 35	148	Operating Frequency
+                    ' 36	149	Gas Separator Efficiency
+                    ' 37	150	Pump Wear Factor
+                    ' 38	151	Pump Depth (Measured)
+                    ' 41	157	Number of Stages
+                    ' 27	145	First Node Pressure
+                    ' 26	144	Tubing Roughness
+                    '334	195	Downhole Heat Transfer Coefficient
+                    ' 21	147	Tubing/Pipe Diameter
+                    '341	202	Downhole Equipment
+                    '342	203	Surface Equipment
+                    '
+                    '
+                    ' Use      DoSet PROSPER.ANL.SYS.Sens.SensDB.Clear
+                    '          to reset ALL sensitivity variable Information
+
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Clear", "")
+                    'Se selecciona como parametro de sensibilidad el gasto de gas de inyección
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[0]", 22)
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[1]", 16)
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[2]", 1)
+
+                    '*** Limpiar los datos anteriores
+                    ' Qgi
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[].RESET", "")
+                    ' WC
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[].RESET", "")
+                    ' Pws
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[].RESET", "")
+
+                    '
+                    ' Se generan los 10 valores de Qgi
+                    ' En 2 corridas se generan 20 valores de WC
+                    '
+                    'Dim Delta_Wc, Wc_Max, Wc_Min As Double
+                    Dim Delta_Qgi As Double
+                    Dim WcVec(9) As Double
+                    ReDim QliqVLP(9, 19)
+                    ReDim PwfVLP(9, 19)
+                    ReDim QgiVec(9)
+                    ReDim QliqVec(9)
+
+                    Delta_Qgi = (QgiMax.Val - QgiMin.Val) / (10 - 1)
+                    For I = 0 To 9
+                        QgiVec(I) = QgiMin.Val + I * Delta_Qgi
+                        DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & I & "]", QgiVec(I))
+                    Next I
+                    '  Wc
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[0]", Wc.Val)
+                    ' Pws
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[0]", PRes.Val)
+                    ' Se realizan los calculos
+                    DoCmd("PROSPER.ANL.SYS.CALC")
+
+                    'POSIBLEMENTE DEPRECIADO POR LA SIGUIENTE FUNCION: 
+                    For j = 0 To 9
+                        QliqVec(j) = DoGet("PROSPER.OUT.SYS.Results[" & j & "][0][0].Sol.LiqRate")
+                    Next j
+                    For i = 0 To 9
+                        For j = 0 To 19
+                            QliqVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].LiqRate[" & j & "]")
+                            PwfVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].VLPpres[" & j & "]")
+                        Next j
+                    Next i
+
+
+
+                    'ResultSystemVar({"LiqRate", "VLPpres"})
+                End If
+                Return True
+            Catch ex As Exception
+                Throw New Exception("Sensibilidad BN:" + ex.Message)
+            End Try
+
+
         End Function
 
 
@@ -3319,6 +4814,7 @@ Public Class Crea
                     'QgiVec(i) = DoGet("Prosper.ANL.SYS.Sens.SensDB.Sens[138].Vals[" + i.ToString() + "]")
                 Next i
                 'Qliq_aforo = DoGet("PROSPER.OUT.SYS.Results[19].Sol.LiqRate")
+                'DoGet("PROSPER.OUT.SYS.Results[0].Sol.LiqRate")
 
                 Disconnect()
                 Return True
@@ -3334,6 +4830,46 @@ Public Class Crea
             ' Analisis de Sensibilidad para el gas de Inyección
             ' Empleando el modulo -> System 3 Variables
             Try
+
+
+                'If Equipment Then
+                '    'Dim WcVec(9) As Double
+                '    'ReDim QliqVLP(9, 19)
+                '    'ReDim PwfVLP(9, 19)
+                '    'ReDim QgiVec(9)
+                '    'ReDim QliqVec(9)
+
+
+
+
+                '    ResultSystemVar({"LiqRate"})
+
+                '    If LiqRate IsNot Nothing AndAlso LiqRate.Count() > 0 Then
+                '        For j = 0 To LiqRate.Count() - 1
+                '            QliqVec(j) = DoGet("PROSPER.OUT.SYS.Results[" & j & "].Sol.LiqRate")
+                '        Next j
+                '        For i = 0 To LiqRate.Count() - 1
+                '            For j = 0 To 19
+                '                QliqVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "].LiqRate[" & j & "]")
+                '                PwfVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "].VLPpres[" & j & "]")
+                '            Next j
+                '        Next i
+                '    End If
+
+                '    'Extraccion QGIMIN y QGIMAX
+                '    If SensVarsVal IsNot Nothing AndAlso SensVarsVal.Keys.Contains(138) Then
+                '        For i = 0 To SensVarsVal(138).Count - 1
+                '            QgiVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & i & "]")
+                '        Next i
+
+                '        QgiMin.Val = SensVarsVal(138)(0)
+                '        QgiMax.Val = SensVarsVal(138)(SensVarsVal(138).Count - 1)
+
+                '    End If
+                'End If
+
+
+
                 ' Presión en la cabeza del pozo (Pth)
                 DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
                 ' Corte de Agua. (Relación agua aceite WC)
@@ -3367,6 +4903,16 @@ Public Class Crea
 
                 ' Correlación de flujo multifásico Vertical
                 DoSet("PROSPER.ANL.SYS.Tubing", CorrVFP)
+
+                'Agregado 22/octubre/2019
+                '******************************************************
+                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Clear", "")
+                DoCmd("PROSPER.ANL.SYS.CALC")
+
+                PumpRate.Val = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
+                PumpHead.Val = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead")
+                'Termina 22/octubre/2019
+
 
                 ' Sensitivity Variables
                 '
@@ -3448,8 +4994,10 @@ Public Class Crea
                         Pdescarga_BEC(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].PDP[" & j & "]")
                     Next j
                 Next i
+
+                Return True
             Catch ex As Exception
-                Throw New Exception("Sensibilidad_BEC: " + ex.Message)
+                Throw New Exception("Sensibilidad BEC: " + ex.Message)
             End Try
         End Function
 
@@ -3464,6 +5012,7 @@ Public Class Crea
                 ReDim MSDQL(1, 1000), PresQL(1, 1000), TVDQL(1, 1000), TempQL(1, 1000)
                 ReDim GGTVD(1), GGPres(1)
                 ReDim MSDGG(1000), PresGG(1000), TVDGG(1000)
+
 
                 ' Use the following list to select the correlation by name
                 '
@@ -3486,30 +5035,45 @@ Public Class Crea
                 ' 23      OLGAS3PEXT
 
                 ' Correlación de flujo mulfifásico Vertical
+                FlagQuickLook = DoGet("PROSPER.OUT.QLG.DONE")
 
-                DoSet("PROSPER.ANL.QLG.Surface[0][0]", THPres.Val)
+                If FlagQuickLook = 0 Then
+                    ' DiamValBNC.Val = DoGet("PROSPER.ANL.QLG.Gaslift[0]")
 
-                DoSet("PROSPER.ANL.QLG.Surface[1][0]", THTemp.Val)
+                    'TRPres.Val = DoGet("PROSPER.ANL.QLG.Surface[6][0]")
 
-                DoSet("PROSPER.ANL.QLG.Surface[2][0]", QTest.Val)
+                    ' Else
+                    DoSet("PROSPER.ANL.QLG.Surface[0][0]", THPres.Val)
 
-                DoSet("PROSPER.ANL.QLG.Surface[3][0]", Wc.Val)
+                    DoSet("PROSPER.ANL.QLG.Surface[1][0]", THTemp.Val)
 
-                DoSet("PROSPER.ANL.QLG.Surface[4][0]", Qg_Total + GLRate.Val)
+                    DoSet("PROSPER.ANL.QLG.Surface[2][0]", QTest.Val)
 
-                DoSet("PROSPER.ANL.QLG.Surface[5][0]", GLRate.Val)
+                    DoSet("PROSPER.ANL.QLG.Surface[3][0]", Wc.Val)
 
-                DoSet("PROSPER.ANL.QLG.Surface[6][0]", TRPres.Val)
+                    DoSet("PROSPER.ANL.QLG.Surface[4][0]", Qg_Total + GLRate.Val)
 
-                DoSet("PROSPER.ANL.QLG.Gaslift[0]", DiamValBNC.Val)
+                    DoSet("PROSPER.ANL.QLG.Surface[5][0]", GLRate.Val)
 
-                DoSet("PROSPER.ANL.QLG.Gaslift[1]", ValveDepth.Val)
+                    DoSet("PROSPER.ANL.QLG.Surface[6][0]", TRPres.Val)
 
-                DoSet("PROSPER.ANL.QLG.Tubing", 1)
+                    DoSet("PROSPER.ANL.QLG.Gaslift[0]", DiamValBNC.Val)
 
-                DoSet("PROSPER.ANL.QLG.Tubing", CorrVFP)
-                ' Se realizan los calculos
-                DoCmd("PROSPER.ANL.QLG.CALC")
+                    DoSet("PROSPER.ANL.QLG.Gaslift[1]", ValveDepth.Val)
+
+                    DoSet("PROSPER.ANL.QLG.Tubing", 1)
+
+                    DoSet("PROSPER.ANL.QLG.Tubing", CorrVFP)
+
+                    ' Se realizan los calculos
+                    DoCmd("PROSPER.ANL.QLG.CALC")
+                    ' FlagQuickLook = 1
+                    SaveFile = True
+
+                    FlagQuickLook = DoGet("PROSPER.OUT.QLG.DONE")
+                End If
+
+
 
                 '
                 ' Se obtienen los resultados del Quick Look
@@ -3543,6 +5107,8 @@ Public Class Crea
 
                 ' PNIMP: Profundidad del intervalo medio productor mD
 
+
+
                 Dim LabelQL(1, 1000) As String
                 Dim Indice, J As Integer
                 Dim TMSDQL As Double
@@ -3553,123 +5119,90 @@ Public Class Crea
                 ' 1: Bottom - Up
 
 
+                If FlagQuickLook = 1 Then
+
+                    For Indice = 0 To 1
+
+                        Dim NumGrad As Integer = DoGet("PROSPER.OUT.QLG.RESULTS[" + Indice.ToString() + "].COUNT")
+                        If NumGrad > 0 Then
+                            For J = 0 To NumGrad - 1
+                                LabelQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Label[" & CStr(J) & "]")
+                                'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 4) = LabelQL(Indice, J)
+                                ' Profundidad desarrollada
+                                MSDQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].MSD[" & CStr(J) & "]")
+                                'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 3) = MSDQL(Indice, J)
+                                ' Profundidad Vertical
+                                TVDQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].TVD[" & CStr(J) & "]")
+                                'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 2) = TVDQL(Indice, J)
+                                ' Presion
+                                PresQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Pres[" & CStr(J) & "]")
+                                'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 1) = PresQL(Indice, J)
+                                ' Temperatura
+                                TempQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Temp[" & CStr(J) & "]")
+                                'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 0) = TempQL(Indice, J)
+                                ' Nueva profundidad
+                                TMSDQL = MSDQL(Indice, J)
+
+                                If Indice = 0 Then
+                                    Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
+                                Else
+                                    Ok = (TMSDQL <= 0 + 0.1)
+                                End If
+
+                                NumDatGrad = NumGrad - 1
+                                If Ok Then
+                                    Exit For
+                                End If
+                            Next
+                        Else
+                            Throw New Exception("QuickLook_BN (" + NumGrad.ToString() + "): Revisar GOR de entrada ")
+                        End If
 
 
-                For Indice = 0 To 1
-
-                    Dim NumGrad = Int32.Parse(DoGet("PROSPER.OUT.QLG.RESULTS[" + Indice.ToString() + "].COUNT"))
-                    If NumGrad > 0 Then
-                        For J = 0 To NumGrad - 1
-                            LabelQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Label[" & CStr(J) & "]")
-                            'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 4) = LabelQL(Indice, J)
-                            ' Profundidad desarrollada
-                            MSDQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].MSD[" & CStr(J) & "]")
-                            'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 3) = MSDQL(Indice, J)
-                            ' Profundidad Vertical
-                            TVDQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].TVD[" & CStr(J) & "]")
-                            'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 2) = TVDQL(Indice, J)
-                            ' Presion
-                            PresQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Pres[" & CStr(J) & "]")
-                            'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 1) = PresQL(Indice, J)
-                            ' Temperatura
-                            TempQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Temp[" & CStr(J) & "]")
-                            'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 0) = TempQL(Indice, J)
-                            ' Nueva profundidad
-                            TMSDQL = MSDQL(Indice, J)
-
-                            If Indice = 0 Then
-                                Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
-                            Else
-                                Ok = (TMSDQL <= 0 + 0.1)
-                            End If
-
-                            NumDatGrad = NumGrad - 1
-                            If Ok Then
-                                Exit For
-                            End If
-                        Next
-                    Else
-                        Throw New Exception("QuickLook_BN (" + NumGrad.ToString() + "): Revisar GOR de entrada ")
-                    End If
 
 
 
 
+                    Next Indice
 
-                    'If Indice = 0 Then TMSDQL = 0 Else TMSDQL = NivMedDisp.Val
-                    'J = 0
-                    'Do
-                    '    ' Etiqueta
-                    '    LabelQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Label[" & CStr(J) & "]")
-                    '    'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 4) = LabelQL(Indice, J)
-                    '    ' Profundidad desarrollada
-                    '    MSDQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].MSD[" & CStr(J) & "]")
-                    '    'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 3) = MSDQL(Indice, J)
-                    '    ' Profundidad Vertical
-                    '    TVDQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].TVD[" & CStr(J) & "]")
-                    '    'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 2) = TVDQL(Indice, J)
-                    '    ' Presion
-                    '    PresQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Pres[" & CStr(J) & "]")
-                    '    'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 1) = PresQL(Indice, J)
-                    '    ' Temperatura
-                    '    TempQL(Indice, J) = DoGet("PROSPER.OUT.QLG.Results[" & CStr(Indice) & "].Temp[" & CStr(J) & "]")
-                    '    'Sheets(HojaQL).Cells(Reng + J, (5 * Indice) - 0) = TempQL(Indice, J)
-                    '    ' Nueva profundidad
-                    '    TMSDQL = MSDQL(Indice, J)
-                    '    'MsgBox(TMSDQL.ToString & " : " & PNIMP.ToString & Chr(13) & _
-                    '    '       Indice.ToString & ", " & J.ToString & ": " & LabelQL(Indice, J) & ", " & MSDQL(Indice, J))
 
-                    '    J = J + 1
-                    '    If Indice = 0 Then
-                    '        Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
-                    '    Else
-                    '        Ok = (TMSDQL <= 0 + 0.1)
-                    '    End If
-                    '    '          If J >= 87 Then
-                    '    '             Ok = Ok
-                    '    '          End If
-                    'Loop Until Ok  '(TMSDQL >= PNIMP)
-                Next Indice
 
-                ' NumDatGrad = J - 1
+                    Dim TMSDGG As Double
 
-                '
-                ' Gradiente de gas medido
-                '
+                    Indice = 0
+                    TMSDGG = 0
 
-                Dim TMSDGG As Double
+                    Do Until (TMSDGG >= NivMedDisp.Val - 0.1)
+                        ' Profundidad desarrollada
+                        MSDGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].MSD")
+                        'Sheets(HojaQL).Cells(Reng + Indice, ColGG) = MSDGG(Indice)
+                        ' Profundidad Vertical
+                        TVDGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].TVD")
+                        'Sheets(HojaQL).Cells(Reng + Indice, ColGG + 1) = TVDGG(Indice)
+                        ' Presion
+                        PresGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].Pres")
+                        'Sheets(HojaQL).Cells(Reng + Indice, ColGG + 2) = PresGG(Indice)
+                        TMSDGG = MSDGG(Indice)
+                        Indice = Indice + 1
+                    Loop
 
-                Indice = 0
-                TMSDGG = 0
+                    NumDatGG = Indice - 1
 
-                Do Until (TMSDGG >= NivMedDisp.Val - 0.1)
-                    ' Profundidad desarrollada
-                    MSDGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].MSD")
-                    'Sheets(HojaQL).Cells(Reng + Indice, ColGG) = MSDGG(Indice)
-                    ' Profundidad Vertical
-                    TVDGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].TVD")
-                    'Sheets(HojaQL).Cells(Reng + Indice, ColGG + 1) = TVDGG(Indice)
-                    ' Presion
-                    PresGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].Pres")
-                    'Sheets(HojaQL).Cells(Reng + Indice, ColGG + 2) = PresGG(Indice)
-                    TMSDGG = MSDGG(Indice)
-                    Indice = Indice + 1
-                Loop
+                    ' Gradiente teorico
+                    Dim GGTVD1, GGTVD2 As Double
 
-                NumDatGG = Indice - 1
+                    GGTVD1 = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].TVD")
+                    GGTVD2 = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].TVD")
 
-                ' Gradiente teorico
-                Dim GGTVD1, GGTVD2 As Double
+                    GGTVD(0) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].TVD")
+                    GGTVD(1) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].TVD")
 
-                GGTVD1 = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].TVD")
-                GGTVD2 = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].TVD")
-
-                GGTVD(0) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].TVD")
-                GGTVD(1) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].TVD")
-
-                GGPres(0) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].Pres")
-                GGPres(1) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].Pres")
+                    GGPres(0) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].Pres")
+                    GGPres(1) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].Pres")
+                End If
+                Return True
             Catch ex As Exception
+                FlagQuickLook = 0
                 Throw New Exception("QuickLook_BN: " + ex.Message)
             End Try
 
@@ -3688,61 +5221,33 @@ Public Class Crea
                 'Presión en la cabeza del pozo
 
                 DoSet("PROSPER.ANL.QLE.Quick[0]", THPres.Val)
-
                 'Gasto de líquido
-
                 DoSet("PROSPER.ANL.QLE.Quick[1]", QTest.Val)
-
                 'Corte de Agua
-
                 DoSet("PROSPER.ANL.QLE.Quick[2]", Wc.Val)
-
                 'Relación de gas-aceite
-
                 DoSet("PROSPER.ANL.QLE.Quick[3]", RGA_Aforo.Val)
-
                 'Presión del yacimiento en el fondo del pozo
-
                 DoSet("PROSPER.ANL.QLE.Quick[4]", PRes.Val)
-
                 'Profundidad de la bomba
-
                 DoSet("PROSPER.ANL.QLE.Quick[5]", Prof_BEC.Val)
-
                 'Frecuencia de operación
-
                 DoSet("PROSPER.ANL.QLE.Quick[6]", Frec_BEC.Val)
-
                 'Longitud del cable
-
                 DoSet("PROSPER.ANL.QLE.Quick[7]", LongCable_BEC.Val)
-
                 'Eficiencia de separación de gas
-
                 DoSet("PROSPER.ANL.QLE.Quick[8]", ReducGas_BEC.Val)
-
                 'Número de etapas
-
                 DoSet("PROSPER.ANL.QLE.Quick[9]", Etapas_BEC.Val)
-
                 'Factor de desgaste de la bomba
-
-                DoSet("PROSPER.ANL.QLE.Quick[10]", Desgaste_BEC.Val)
-
+                DoSet("PROSPER.ANL.QLE.Quick[10]", Desgaste_BEC.Val)   'PROSPER.ANL.VMT.Data[0].PDP
                 'Corriente del BEC
-
                 DoSet("PROSPER.ANL.QLE.Surf[0]", Corriente_BEC.Val)
-
                 'Voltaje
-
                 DoSet("PROSPER.ANL.QLE.Surf[0]", VoltSup_BEC.Val)
-
                 'Potencia
-
                 DoSet("PROSPER.ANL.QLE.Surf[0]", Potencia_BEC.Val)
-
                 'Se selecciona la correlación que mejor ajusta
-
                 DoSet("PROSPER.ANL.QLE.Tubing", CorrVFP)
 
 
@@ -3750,215 +5255,196 @@ Public Class Crea
 
 
                 ' Se realizan los calculos
-
                 DoCmd("PROSPER.ANL.QLE.CALC")
 
 
 
                 ' Se obtienen los resultados del Quick Look
-
-                '
+                '======================================================================================
 
                 Dim Ok As Integer
 
 
+                'VERIFICAR FUNCIONALIDAD TALVEZ A DEPRECIAR
 
                 'Potencia requerida en la bomba
-
                 HPreqBomba_BECq = DoGet("PROSPER.OUT.QLE.Output[0]")
-
                 'Potencia requerida en el motor
-
                 HPreqMotor_BECq = DoGet("PROSPER.OUT.QLE.Output[1]")
-
                 'Eficiencia del motor
-
                 EfiMotor_BECq = DoGet("PROSPER.OUT.QLE.Output[2]")
-
                 'Voltaje requerido
-
                 Voltreq_BECq = DoGet("PROSPER.OUT.QLE.Output[3]")
-
                 'Presión de succión
-
                 PreSuccion_BECq = DoGet("PROSPER.OUT.QLE.Output[4]")
-
                 'Presión de descarga
-
                 PreDescarga_BECq = DoGet("PROSPER.OUT.QLE.Output[5]")
-
                 'Gasto de liquido a condiciones de fondo de pozo
-
                 QliqCY_BECq = DoGet("PROSPER.OUT.QLE.Output[6]")
-
                 'Facción de gas libre que entra en la bomba
-
                 FgasinBomba_BECq = DoGet("PROSPER.OUT.QLE.Output[7]")
-
                 'Cosumo de corriente
-
                 KVA_BECq = DoGet("PROSPER.OUT.QLE.Output[8]")
-
                 'Torque en el eje
-
                 TorqEje_BECq = DoGet("PROSPER.OUT.QLE.Output[9]")
 
 
 
 
 
-                ' PNIMP: Profundidad del intervalo medio productor mD
-
-
-
-                'Dim LabelQL(1, 1000) As String
-
-                'Dim TVDQL(1, 1000) As Double
 
                 Dim Indice, J As Integer
-
                 Dim TMSDQL As Double
-
                 Dim max = 10
-
                 NumDatGrad = 0
-
                 NumDatGrad2 = 0
 
                 Ok = False
 
                 ' Resultados
-
                 ' 0: Top - Down
-
                 ' 1: Bottom - Up
+                Dim Limit As Integer = 0
 
                 For Indice = 0 To 1
+                    Dim Results As Integer = DoGet("PROSPER.OUT.QLE.Results[" + Indice.ToString() + "].COUNT")
 
-                    If Indice = 0 Then TMSDQL = 0 Else TMSDQL = NivMedDisp.Val 'OJO REVISAR
 
-                    J = 0
 
-                    Do
+                    If Indice = 0 Then
+                        ReDim TVDQL(1, Results - 1)
+                        ReDim PresQL(1, Results - 1)
+                        ReDim TempQL(1, Results - 1)
 
-                        If J > max Then
+                        NumDatGrad = Results
+                    End If
 
-                            max = J
+                    If Results > NumDatGrad Then
+                        NumDatGrad = Results
+                        ReDim Preserve TVDQL(1, Results - 1)
+                        ReDim Preserve PresQL(1, Results - 1)
+                        ReDim Preserve TempQL(1, Results - 1)
 
-                            ReDim Preserve MSDQL(1, J)
+                    End If
 
-                            ReDim Preserve TVDQL(1, J)
 
-                            ReDim Preserve PresQL(1, J)
-
-                        End If
-
+                    For J = 0 To Results - 1
                         ' Profundidad desarrollada
+                        'MSDQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].MSD[" & CStr(J) & "]") ' NO SABEMOS DONDE SE USA
 
-                        MSDQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].MSD[" & CStr(J) & "]")
 
                         ' Profundidad Vertical
-
                         TVDQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].TVD[" & CStr(J) & "]")
-
                         ' Presion
-
                         PresQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].Pres[" & CStr(J) & "]")
-
                         ' Temperatura
-
-                        'TempQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].Temp[" & CStr(J) & "]")
-
-                        ' Nueva profundidad
-
-                        TMSDQL = MSDQL(Indice, J)
+                        TempQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].Temp[" & CStr(J) & "]")
+                    Next
 
 
+                    'If Indice = 0 Then TMSDQL = 0 Else TMSDQL = NivMedDisp.Val 'OJO REVISAR
+                    'J = 0
+                    'Do
 
-                        J = J + 1
+                    '    If J > max Then
 
-                        If Indice = 0 Then
+                    '        max = J
 
-                            NumDatGrad += 1
+                    '        ReDim Preserve MSDQL(1, J)
 
-                            Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
+                    '        ReDim Preserve TVDQL(1, J)
 
-                        Else
+                    '        ReDim Preserve PresQL(1, J)
 
-                            NumDatGrad2 += 1
+                    '    End If
 
-                            Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
+                    '    ' Profundidad desarrollada
+                    '    MSDQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].MSD[" & CStr(J) & "]")
+                    '    ' Profundidad Vertical
+                    '    TVDQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].TVD[" & CStr(J) & "]")
+                    '    ' Presion
+                    '    PresQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].Pres[" & CStr(J) & "]")
+                    '    ' Temperatura
+                    '    'TempQL(Indice, J) = DoGet("PROSPER.OUT.QLE.Results[" & CStr(Indice) & "].Temp[" & CStr(J) & "]")
 
-                            'Ok = (TMSDQL <= 0 + 0.1)
+                    '    ' Nueva profundidad
 
-                        End If
+                    '    TMSDQL = MSDQL(Indice, J)
+                    '    J = J + 1
 
+                    '    If Indice = 0 Then
+                    '        NumDatGrad += 1
+                    '        Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
+                    '    Else
+                    '        NumDatGrad2 += 1
+                    '        Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
+                    '    End If
 
-
-                    Loop Until Ok
-
+                    'Loop Until Ok
                 Next Indice
 
 
 
 
 
-                Dim Htcs As Double = DoGet("PROSPER.SIN.EQP.Geo.Htc")
-                DoSet("PROSPER.SIN.SUM.TempModel", 2)
-                Dim Htcincr As Double = Htcs / NumDatTemp.Val - 1
-                For I = 0 To NumDatTemp.Val - 1
-                    DoSet("PROSPER.SIN.EQP.Geo.Data[" & CStr(I) & "].Htc", Htcincr * (I + 1))
-                Next I
+                'Dim Htcs As Double = DoGet("PROSPER.SIN.EQP.Geo.Htc")
+                'DoSet("PROSPER.SIN.SUM.TempModel", 2)
+                'Dim Htcincr As Double = Htcs / NumDatTemp.Val - 1
+                'For I = 0 To NumDatTemp.Val - 1
+                '    DoSet("PROSPER.SIN.EQP.Geo.Data[" & CStr(I) & "].Htc", Htcincr * (I + 1))
+                'Next I
 
 
 
-                DoSet("PROSPER.ANL.GRD.Pres", THPres.Val)
-                DoSet("PROSPER.ANL.GRD.Temp", TRes.Val)
-                DoSet("PROSPER.ANL.GRD.WC", Wc.Val)
-                DoSet("PROSPER.ANL.GRD.GOR", RGA_Aforo.Val)
-                DoSet("PROSPER.ANL.GRD.Rate", QTest.Val)
-                DoSet("PROSPER.ANL.GRD.Tubing", CorrVFP)
-                DoCmd("PROSPER.ANL.GRD.CALC")
+                'DoSet("PROSPER.ANL.GRD.Pres", THPres.Val)
+                'DoSet("PROSPER.ANL.GRD.Temp", TRes.Val)
+                'DoSet("PROSPER.ANL.GRD.WC", Wc.Val)
+                'DoSet("PROSPER.ANL.GRD.GOR", RGA_Aforo.Val)
+                'DoSet("PROSPER.ANL.GRD.Rate", QTest.Val)
+                'DoSet("PROSPER.ANL.GRD.Tubing", CorrVFP)
+                'DoCmd("PROSPER.ANL.GRD.CALC")
 
 
 
-                NumDatGrad = 0
-                NumDatGrad2 = 0
-                max = 10
+                'NumDatGrad = 0
+                'NumDatGrad2 = 0
+                'max = 10
 
-                For Indice = 0 To 1
-                    If Indice = 0 Then TMSDQL = 0 Else TMSDQL = NivMedDisp.Val 'OJO REVISAR
-                    J = 0
-                    Do
-                        If J > max Then
-                            max = J
-                            ReDim Preserve TempQL(1, J)
+                'For Indice = 0 To 1
+                '    If Indice = 0 Then TMSDQL = 0 Else TMSDQL = NivMedDisp.Val 'OJO REVISAR
+                '    J = 0
+                '    Do
+                '        If J > max Then
+                '            max = J
+                '            ReDim Preserve TempQL(1, J)
 
-                        End If
+                '        End If
 
-                        ' Temperatura
+                '        ' Temperatura
 
-                        TempQL(Indice, J) = DoGet("PROSPER.OUT.GRD.Results[0][0][0].Temp[" & CStr(J) & "]")
-                        ' Nueva profundidad
-                        TMSDQL = MSDQL(Indice, J)
-                        J = J + 1
-                        If Indice = 0 Then
-                            NumDatGrad += 1
-                            Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
-                        Else
+                '        TempQL(Indice, J) = DoGet("PROSPER.OUT.GRD.Results[0][0][0].Temp[" & CStr(J) & "]")
+                '        ' Nueva profundidad
+                '        TMSDQL = MSDQL(Indice, J)
+                '        J = J + 1
+                '        If Indice = 0 Then
+                '            NumDatGrad += 1
+                '            Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
+                '        Else
 
-                            NumDatGrad2 += 1
-                            Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
-                            'Ok = (TMSDQL <= 0 + 0.1)
+                '            NumDatGrad2 += 1
+                '            Ok = (TMSDQL >= NivMedDisp.Val - 0.1)
+                '            'Ok = (TMSDQL <= 0 + 0.1)
 
-                        End If
+                '        End If
 
-                    Loop Until Ok
+                '    Loop Until Ok
 
-                Next Indice
+                'Next Indice
                 DoSet("PROSPER.SIN.SUM.TempModel", 0)
+                FlagQuickLook = 1
+                Return True
             Catch ex As Exception
-                Throw New Exception("QuickLook_BEC: " + ex.Message)
+                Throw New Exception("QuickLook BEC: " + ex.Message)
             End Try
         End Function
         ''' <summary>
@@ -3966,256 +5452,455 @@ Public Class Crea
         ''' </summary>
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Private Function SensAgua_BN() As Boolean
-            ReDim Qgi_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
-            '
-            ' Analisis de sensibilidad para  diferentes porcentajes de agua
-            '
-            ' Empleando el modulo -> System 3 Variables
+            Try
+                If Equipment Then
 
-            ' Presión en la cabeza del pozo (Pth)
-            DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
-            ' Corte de Agua. (Relación agua aceite WC)
-            DoSet("PROSPER.ANL.SYS.WC", Wc.Val)
-            ' Relación gas aceite total
-            DoSet("PROSPER.ANL.SYS.GOR", GOR_Total)
+                    ReDim Qgi_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
+                    Dim QgiVec(9), WcVec(9) As Double
+                    ' qli
+                    'ResultSystemVar({"Q"}) 
 
-            '   You can also use the following syntax to reference the correlation by label
-            '
-            ' PROSPER.ANL.SYS.TubingLabel
-            '
-            ' Use the following list to select the correlation by name
-            '
-            ' 0       DunsandRosModified
-            ' 1       HagedornBrown
-            ' 2       FancherBrown
-            ' 4       MukerjeeBrill
-            ' 5       BeggsandBrill
-            ' 8       PetroleumExperts
-            ' 9       Orkiszewski
-            ' 10      PetroleumExperts2
-            ' 11      DunsandRosOriginal
-            ' 12      PetroleumExperts3
-            ' 14      GREmodifiedbyPE
-            ' 18      PetroleumExperts4
-            ' 19      Hydro3P
-            ' 20      PetroleumExperts5
-            ' 21      OLGAS2P
-            ' 22      OLGAS3P
-            ' 23      OLGAS3PEXT
 
-            ' Correlación de flujo multifásico Vertical
-            DoSet("PROSPER.ANL.SYS.Tubing", CorrVFP)
 
-            ' Sensitivity Variables
-            '
-            ' Type    Index   Variable Name
-            ' --------------------------------------------------------------
-            '    1     1 Reservoir Pressure     <----------------
-            '   53     2 Reservoir Temperature
-            '   51     7 Reservoir Permeability
-            '   56     8 Reservoir Thickness
-            '   57     9 Drainage Area
-            '   58    10 Dietz Shape Factor
-            '   59    11 Wellbore Radius
-            '   16     6 Water Cut              <----------------
-            '   17   131 Gas Oil Ratio
-            '    2    27 Skin
-            '   40   155 Water Oil Ratio
-            '   19   156 Condensate Gas Ratio
-            '   24   132 GLR Free
-            '   25   133 Free Gas Rate
-            '   33   134 GOR Free
-            '   20   135 Total GOR
-            '   39   136 Dissolved and Free GLR
-            '   44   160 Gaslift Gas Specific Gravity
-            '   22   138 Gaslift Gas Injection Rate    <---------------------
-            '   23   139 GLR Injected
-            '   31   140 Injection Depth
-            '   27   145 First Node Pressure
-            '   26   144 Tubing Roughness
-            '  307   168 Pipe Roughness
-            '  334   195 Downhole Heat Transfer Coefficient
-            '  335   196 Surface Heat Transfer Coefficient
-            '   28   146 Choke Size
-            '   21   147 Tubing/Pipe Diameter
-            '  341   202 Downhole Equipment
-            '  342   203 Surface Equipment
-            '
-            '
-            ' Use      DoSet PROSPER.ANL.SYS.Sens.SensDB.Clear
-            '          to reset ALL sensitivity variable Information
 
-            'Se selecciona como parametro de sensibilidad el gasto de gas de inyección
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[0]", 22)
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[1]", 16)
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[2]", 1)
+                    Dim TotalResults As Integer = DoGet("PROSPER.OUT.SYS.Results.COUNT")
 
-            '*** Limpiar los datos anteriores
-            ' Qgi
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[].RESET", "")
-            ' WC
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[].RESET", "")
-            ' Pws
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[].RESET", "")
+                    If SensVars.Contains(138) Then
+                        For i = 0 To SensVarsVal(138).Count - 1
+                            QgiVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & i & "]")
+                        Next i
+                    End If
 
-            '
-            ' Se generan los 10 valores de Qgi
-            ' En 2 corridas se generan 20 valores de WC
-            '
+                    If SensVars.Contains(6) Then
+                        For i = 0 To SensVarsVal(6).Count - 1
+                            WcVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" & i & "]")
+                        Next i
+                    End If
 
-            Dim Delta_Qgi, Delta_Wc, Wc_Max, Wc_Min As Double
-            Dim QgiVec(9), WcVec(9) As Double
-            Wc_Min = 0
-            Wc_Max = 90
 
-            Delta_Qgi = (QgiMax.Val - QgiMin.Val) / (10 - 1)
-            Delta_Wc = (Wc_Max - Wc_Min) / (10 - 1)
+                    For i = 0 To TotalResults - 1
+                        'Qliq_Res[][][]
+                    Next
+                    'Dim var3 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals.COUNT")
 
-            For I = 0 To 9
-                QgiVec(I) = QgiMin.Val + I * Delta_Qgi
-                WcVec(I) = Wc_Min + I * Delta_Wc
-                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & I & "]", QgiVec(I))
-                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" & I & "]", WcVec(I))
-            Next I
+                    'Resul_System3var(CorrVFP, THPres.Val, Wc.Val, GOR_Total, var1, var2, var3, Qgi_Res, Wc_Res, Pws_Res, Qliq_Res, 138)
 
-            ' Pws
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[0]", PRes.Val)
+                Else
+                    ReDim Qgi_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
 
-            ' Se realizan los calculos
-            DoCmd("PROSPER.ANL.SYS.CALC")
 
-            ' Se obtienen los resultados parciales del análisis de sensibilidad al % de agua
-            Resul_System3var(CorrVFP, THPres.Val, Wc.Val, GOR_Total, 9, 9, 0, Qgi_Res, Wc_Res, Pws_Res, Qliq_Res, 138)
+                    '
+                    ' Analisis de sensibilidad para  diferentes porcentajes de agua
+                    '
+                    ' Empleando el modulo -> System 3 Variables
+
+                    ' Presión en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.SYS.WC", Wc.Val)
+                    ' Relación gas aceite total
+                    DoSet("PROSPER.ANL.SYS.GOR", GOR_Total)
+
+                    '   You can also use the following syntax to reference the correlation by label
+                    '
+                    ' PROSPER.ANL.SYS.TubingLabel
+                    '
+                    ' Use the following list to select the correlation by name
+                    '
+                    ' 0       DunsandRosModified
+                    ' 1       HagedornBrown
+                    ' 2       FancherBrown
+                    ' 4       MukerjeeBrill
+                    ' 5       BeggsandBrill
+                    ' 8       PetroleumExperts
+                    ' 9       Orkiszewski
+                    ' 10      PetroleumExperts2
+                    ' 11      DunsandRosOriginal
+                    ' 12      PetroleumExperts3
+                    ' 14      GREmodifiedbyPE
+                    ' 18      PetroleumExperts4
+                    ' 19      Hydro3P
+                    ' 20      PetroleumExperts5
+                    ' 21      OLGAS2P
+                    ' 22      OLGAS3P
+                    ' 23      OLGAS3PEXT
+
+                    ' Correlación de flujo multifásico Vertical
+                    DoSet("PROSPER.ANL.SYS.Tubing", CorrVFP)
+
+                    ' Sensitivity Variables
+                    '
+                    ' Type    Index   Variable Name
+                    ' --------------------------------------------------------------
+                    '    1     1 Reservoir Pressure     <----------------
+                    '   53     2 Reservoir Temperature
+                    '   51     7 Reservoir Permeability
+                    '   56     8 Reservoir Thickness
+                    '   57     9 Drainage Area
+                    '   58    10 Dietz Shape Factor
+                    '   59    11 Wellbore Radius
+                    '   16     6 Water Cut              <----------------
+                    '   17   131 Gas Oil Ratio
+                    '    2    27 Skin
+                    '   40   155 Water Oil Ratio
+                    '   19   156 Condensate Gas Ratio
+                    '   24   132 GLR Free
+                    '   25   133 Free Gas Rate
+                    '   33   134 GOR Free
+                    '   20   135 Total GOR
+                    '   39   136 Dissolved and Free GLR
+                    '   44   160 Gaslift Gas Specific Gravity
+                    '   22   138 Gaslift Gas Injection Rate    <---------------------
+                    '   23   139 GLR Injected
+                    '   31   140 Injection Depth
+                    '   27   145 First Node Pressure
+                    '   26   144 Tubing Roughness
+                    '  307   168 Pipe Roughness
+                    '  334   195 Downhole Heat Transfer Coefficient
+                    '  335   196 Surface Heat Transfer Coefficient
+                    '   28   146 Choke Size
+                    '   21   147 Tubing/Pipe Diameter
+                    '  341   202 Downhole Equipment
+                    '  342   203 Surface Equipment
+                    '
+                    '
+                    ' Use      DoSet PROSPER.ANL.SYS.Sens.SensDB.Clear
+                    '          to reset ALL sensitivity variable Information
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Clear", "")
+                    'Se selecciona como parametro de sensibilidad el gasto de gas de inyección
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[0]", 22)
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[1]", 16)
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[2]", 1)
+
+                    '*** Limpiar los datos anteriores
+                    ' Qgi
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[].RESET", "")
+                    ' WC
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[].RESET", "")
+                    ' Pws
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[].RESET", "")
+
+                    '
+                    ' Se generan los 10 valores de Qgi
+                    ' En 2 corridas se generan 20 valores de WC
+                    '
+
+                    Dim Delta_Qgi, Delta_Wc, Wc_Max, Wc_Min As Double
+                    Dim QgiVec(9), WcVec(9) As Double
+                    Wc_Min = 0
+                    Wc_Max = 90
+
+                    Delta_Qgi = (QgiMax.Val - QgiMin.Val) / (10 - 1)
+                    Delta_Wc = (Wc_Max - Wc_Min) / (10 - 1)
+
+                    For i = 0 To 9
+                        QgiVec(i) = QgiMin.Val + i * Delta_Qgi
+                        WcVec(i) = Wc_Min + i * Delta_Wc
+                        DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" + i.ToString() + "]", QgiVec(i))
+                        DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" + i.ToString() + "]", WcVec(i))
+                    Next i
+
+                    ' Pws
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[0]", PRes.Val)
+
+                    ' Se realizan los calculos
+                    DoCmd("PROSPER.ANL.SYS.CALC")
+
+
+                    'Parametros de recorrido
+                    '===================================================================================================================
+                    Dim var1 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals.COUNT") 'Gasto de inyeccion de gas
+                    Dim var2 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals.COUNT") 'Corte de 
+                    Dim var3 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals.COUNT") 'Presion en el yacimiento
+                    ' Se obtienen los resultados parciales del análisis de sensibilidad al % de agua
+                    'SUSTITUIDO POR UNA NUEVA FUNCION:  
+                    Resul_System3var(CorrVFP, THPres.Val, Wc.Val, GOR_Total, var1 - 1, var2 - 1, var3 - 1, Qgi_Res, Wc_Res, Pws_Res, Qliq_Res, 138)
+
+
+
+                    'ResultSystemVar({"LiqRate"})
+
+
+
+                End If
+                FlagSensWc = 1
+                Return True
+            Catch ex As Exception
+                FlagSensWc = 0
+                Throw New Exception("Sensibilidad Agua: " + ex.Message)
+            End Try
+
+
 
         End Function
+
 
         Private Function SensAgua_BEC() As Boolean
-            ReDim Frec_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
-            '
-            ' Analisis de sensibilidad para  diferentes porcentajes de agua
-            '
-            ' Empleando el modulo -> System 3 Variables
+            Try
+                If Equipment Then
+                    FlagSensWc = 0
+                End If
 
-            ' Presión en la cabeza del pozo (Pth)
-            DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
-            ' Corte de Agua. (Relación agua aceite WC)
-            DoSet("PROSPER.ANL.SYS.WC", Wc.Val)
-            ' Relación gas aceite total
-            DoSet("PROSPER.ANL.SYS.GOR", GOR_Total)
+                ReDim Frec_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
+                    '
+                    ' Analisis de sensibilidad para  diferentes porcentajes de agua
+                    '
+                    ' Empleando el modulo -> System 3 Variables
 
-            '   You can also use the following syntax to reference the correlation by label
-            '
-            ' PROSPER.ANL.SYS.TubingLabel
-            '
-            ' Use the following list to select the correlation by name
-            '
-            ' 0       DunsandRosModified
-            ' 1       HagedornBrown
-            ' 2       FancherBrown
-            ' 4       MukerjeeBrill
-            ' 5       BeggsandBrill
-            ' 8       PetroleumExperts
-            ' 9       Orkiszewski
-            ' 10      PetroleumExperts2
-            ' 11      DunsandRosOriginal
-            ' 12      PetroleumExperts3
-            ' 14      GREmodifiedbyPE
-            ' 18      PetroleumExperts4
-            ' 19      Hydro3P
-            ' 20      PetroleumExperts5
-            ' 21      OLGAS2P
-            ' 22      OLGAS3P
-            ' 23      OLGAS3PEXT
+                    ' Presión en la cabeza del pozo (Pth)
+                    DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
+                    ' Corte de Agua. (Relación agua aceite WC)
+                    DoSet("PROSPER.ANL.SYS.WC", Wc.Val)
+                    ' Relación gas aceite total
+                    DoSet("PROSPER.ANL.SYS.GOR", GOR_Total)
 
-            ' Correlación de flujo multifásico Vertical
-            DoSet("PROSPER.ANL.SYS.Tubing", CorrVFP)
+                    '   You can also use the following syntax to reference the correlation by label
+                    '
+                    ' PROSPER.ANL.SYS.TubingLabel
+                    '
+                    ' Use the following list to select the correlation by name
+                    '
+                    ' 0       DunsandRosModified
+                    ' 1       HagedornBrown
+                    ' 2       FancherBrown
+                    ' 4       MukerjeeBrill
+                    ' 5       BeggsandBrill
+                    ' 8       PetroleumExperts
+                    ' 9       Orkiszewski
+                    ' 10      PetroleumExperts2
+                    ' 11      DunsandRosOriginal
+                    ' 12      PetroleumExperts3
+                    ' 14      GREmodifiedbyPE
+                    ' 18      PetroleumExperts4
+                    ' 19      Hydro3P
+                    ' 20      PetroleumExperts5
+                    ' 21      OLGAS2P
+                    ' 22      OLGAS3P
+                    ' 23      OLGAS3PEXT
 
-            ' Sensitivity Variables
+                    ' Correlación de flujo multifásico Vertical
+                    DoSet("PROSPER.ANL.SYS.Tubing", CorrVFP)
 
-            'Type	Index	Variable Name
-            ' --------------------------------------------------------------
-            '    1	  1	Reservoir Pressure
-            '   53	  2	Reservoir Temperature
-            '   51	  7	Reservoir Permeability
-            '   56	  8	Reservoir Thickness
-            '   57	  9	Drainage Area
-            '   58	 10	Dietz Shape Factor
-            '   59	 11	Wellbore Radius
-            '   16	  6	Water Cut
-            '   17	131	Gas Oil Ratio
-            '    2	 27	Skin
-            '   40	155	Water Oil Ratio
-            '   19	156	Condensate Gas Ratio
-            '   24	132	GLR Free
-            '   25	133	Free Gas Rate
-            '   33	134	GOR Free
-            '   20	135	Total GOR
-            '   39	136	Dissolved and Free GLR
-            '   35	148	Operating Frequency
-            '   36	149	Gas Separator Efficiency
-            '   37	150	Pump Wear Factor
-            '   38	151	Pump Depth (Measured)
-            '   41	157	Number of Stages
-            '   27	145	First Node Pressure
-            '   26	144	Tubing Roughness
-            '  334	195	Downhole Heat Transfer Coefficient
-            '   21	147	Tubing/Pipe Diameter
-            '  341	202	Downhole Equipment
-            '  342	203	Surface Equipment
+                    ' Sensitivity Variables
 
-            '*** Limpiar los datos anteriores
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Clear", "")
+                    'Type	Index	Variable Name
+                    ' --------------------------------------------------------------
+                    '    1	  1	Reservoir Pressure
+                    '   53	  2	Reservoir Temperature
+                    '   51	  7	Reservoir Permeability
+                    '   56	  8	Reservoir Thickness
+                    '   57	  9	Drainage Area
+                    '   58	 10	Dietz Shape Factor
+                    '   59	 11	Wellbore Radius
+                    '   16	  6	Water Cut
+                    '   17	131	Gas Oil Ratio
+                    '    2	 27	Skin
+                    '   40	155	Water Oil Ratio
+                    '   19	156	Condensate Gas Ratio
+                    '   24	132	GLR Free
+                    '   25	133	Free Gas Rate
+                    '   33	134	GOR Free
+                    '   20	135	Total GOR
+                    '   39	136	Dissolved and Free GLR
+                    '   35	148	Operating Frequency
+                    '   36	149	Gas Separator Efficiency
+                    '   37	150	Pump Wear Factor
+                    '   38	151	Pump Depth (Measured)
+                    '   41	157	Number of Stages
+                    '   27	145	First Node Pressure
+                    '   26	144	Tubing Roughness
+                    '  334	195	Downhole Heat Transfer Coefficient
+                    '   21	147	Tubing/Pipe Diameter
+                    '  341	202	Downhole Equipment
+                    '  342	203	Surface Equipment
 
-            'Se selecciona como parametro de sensibilidad la freciencia del BEC
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[0]", 35)
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[1]", 16)
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[2]", 1)
+                    '*** Limpiar los datos anteriores
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Clear", "")
 
-            ' Se generan los 10 valores de Frecuencia
-            '
+                    'Se selecciona como parametro de sensibilidad la freciencia del BEC
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[0]", 35)
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[1]", 16)
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[2]", 1)
 
-            Dim Delta_frec, Delta_Wc, Wc_Max, Wc_Min As Double
-            Dim WcVec(9) As Double
-            ReDim QgiVec(9)
-            Wc_Min = 0
-            Wc_Max = 90
+                    ' Se generan los 10 valores de Frecuencia35	148
+                    '
 
-            Delta_frec = (FrecMax.Val - FrecMin.Val) / (10 - 1)
-            Delta_Wc = (Wc_Max - Wc_Min) / (10 - 1)
+                    Dim Delta_frec, Delta_Wc, Wc_Max, Wc_Min As Double
+                    Dim WcVec(9) As Double
+                    ReDim QgiVec(9)
+                    Wc_Min = 0
+                    Wc_Max = 90
 
-            For I = 0 To 9
-                FrecVec(I) = FrecMin.Val + I * Delta_frec
-                WcVec(I) = Wc_Min + I * Delta_Wc
-                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[148].Vals[" & I & "]", FrecVec(I))
-                DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" & I & "]", WcVec(I))
-            Next I
+                    Delta_frec = (FrecMax.Val - FrecMin.Val) / (10 - 1)
+                    Delta_Wc = (Wc_Max - Wc_Min) / (10 - 1)
 
-            ' Pws
-            DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[0]", PRes.Val)
+                    For I = 0 To 9
+                        FrecVec(I) = FrecMin.Val + I * Delta_frec
+                        WcVec(I) = Wc_Min + I * Delta_Wc
+                        DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[148].Vals[" & I & "]", FrecVec(I))
+                        DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" & I & "]", WcVec(I))
+                    Next I
 
-            ' Se realizan los calculos
-            DoCmd("PROSPER.ANL.SYS.CALC")
+                    ' Pws
+                    DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[0]", PRes.Val)
 
-            ' Se obtienen los resultados parciales del análisis de sensibilidad al % de agua
-            Resul_System3var(CorrVFP, THPres.Val, Wc.Val, GOR_Total, 9, 9, 0, Frec_Res, Wc_Res, Pws_Res, Qliq_Res, 148)
+                    ' Se realizan los calculos
+                    DoCmd("PROSPER.ANL.SYS.CALC")
+
+                    ' Se obtienen los resultados parciales del análisis de sensibilidad al % de agua
+                    Resul_System3var(CorrVFP, THPres.Val, Wc.Val, GOR_Total, 9, 9, 0, Frec_Res, Wc_Res, Pws_Res, Qliq_Res, 148)
+
+                FlagSensWc = 1
+                Return True
+            Catch ex As Exception
+                Throw New Exception("Sensibilidad WC: " + ex.Message)
+            End Try
+
         End Function
 
-        Public Function Carta_BEC() As Boolean
+        Public Function carta_BEC() As Boolean
             Try
+                Dim Carga_Bombs As New Double         'Carga generada por la bomba al gasto dado m
+                Dim Gasto_PyT_bomba As New Double     'Gasto de liquido a condiciones de presión y temperatura de la bomba bpd
+                Dim Bomba_Prof As New Double          'Profundidad de la  bomba md
+                Dim Num_Etapa As New Double           'Numero de etapas de la bomba
+                Dim Fac_desgaste As New Double        'Factor de desgaste de la bomba fracción
+                Dim Efi_SepGas As New Double          'Eficiencia de separador de gas frac.
+
+
+                ' If GOR_Tot = 0 Then GOR_Tot = DoGet("PROSPER.SIN.IPR.Single.totgor")
+
+                ''Análisis de sensibilidad de variables
+                'DoSet("PROSPER.ANL.SYS.Pres", PRes)
+                'DoSet("PROSPER.ANL.SYS.WC", Wc)
+                'DoSet("PROSPER.ANL.SYS.GOR", GOR_Tot)
+                'DoSet("PROSPER.ANL.SYS.TubingLabel", xx(0).Ncorr)
+                ''Selección de la frecuencia
+                'DoSet("PROSPER.ANL.SYS.Sens.SensDB.Clear", "")
+                'DoSet("PROSPER.ANL.SYS.Sens.SensDB.Vars[0]", 35) 'OJO, VERIFICAR SI REALMENTE ES 35
+                'DoSet("PROSPER.ANL.SYS.Sens.SensDB.Sens[148].Vals[0]", Frecuencia)
+                'DoCmd("PROSPER.ANL.SYS.CALC")
+                'LiqRate = DoGet("PROSPER.OUT.SYS.Results[0].Sol.LiqRate")
+                'PWS = DoGet("PROSPER.SIN.IPR.Single.Pres")
+
+                If Equipment Then
+                    Bomba_BEC.Val = DoGet("PROSPER.SIN.ESP.DesPump")
+                    Motor_BEC.Val = DoGet("PROSPER.SIN.ESP.DesMotor")
+                    Cable_BEC.Val = DoGet("PROSPER.SIN.ESP.DesCable")
+                    ' Prof_BEC.Val = DoGet("PROSPER.SIN.ESP.Depth")
+                End If
+
+                Bomba_Prof = DoGet("PROSPER.SIN.ESP.Depth")
+                Efi_SepGas = DoGet("PROSPER.SIN.ESP.Efficiency")
+                Num_Etapa = DoGet("PROSPER.SIN.ESP.Stages")
+                Fac_desgaste = DoGet("PROSPER.SIN.ESP.Wear")
+                Carga_Bombs = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead")
+                Gasto_PyT_bomba = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
+
+
+                Frec_BEC.Val = DoGet("PROSPER.SIN.ESP.Frequency") 'BOMBA.FRECUENCIAHZ
+                Etapas_BEC.Val = DoGet("PROSPER.SIN.ESP.Stages") 'BOMBA.ETAPAS
+                'Dim rang_minimo = DoGet("Prosper.SIN.ESP.Pump.MinRate") 'Bom.MIN_RAN_OP
+                'Dim rang_maximo = DoGet("Prosper.SIN.ESP.Pump.MaxRate") ' Bom.MAX_RAN_OP 'BOMBA.MAX_RAN_OP
+                EfiSepGas_BEC.Val = DoGet("PROSPER.SIN.ESP.Efficiency") 'BOMBA.MEJOR_EFICIENCIA
+
+                'PROSPER.ANL.QLE.Quick[3]
+
+
+                For j = 0 To 99
+                    CartaX(0, j) = DoGet("PROSPER.OUT.ESP.PUMPRT[0][" + j.ToString() + "]")
+                    CartaX(1, j) = DoGet("PROSPER.OUT.ESP.PUMPRT[1][" + j.ToString() + "]")
+                    CartaX(2, j) = DoGet("PROSPER.OUT.ESP.PUMPRT[2][" + j.ToString() + "]")
+                    CartaX(3, j) = DoGet("PROSPER.OUT.ESP.PUMPRT[3][" + j.ToString() + "]")
+                    CartaX(4, j) = DoGet("PROSPER.OUT.ESP.PUMPRT[4][" + j.ToString() + "]")
+                    CartaX(5, j) = DoGet("PROSPER.OUT.ESP.PUMPRT[5][" + j.ToString() + "]")
+
+                    CartaY(0, j) = DoGet("PROSPER.OUT.ESP.PUMPHD[0][" + j.ToString() + "]") * Num_Etapa
+                    CartaY(1, j) = DoGet("PROSPER.OUT.ESP.PUMPHD[1][" + j.ToString() + "]") * Num_Etapa
+                    CartaY(2, j) = DoGet("PROSPER.OUT.ESP.PUMPHD[2][" + j.ToString() + "]") * Num_Etapa
+                    CartaY(3, j) = DoGet("PROSPER.OUT.ESP.PUMPHD[3][" + j.ToString() + "]") * Num_Etapa
+                    CartaY(4, j) = DoGet("PROSPER.OUT.ESP.PUMPHD[4][" + j.ToString() + "]") * Num_Etapa
+                    CartaY(5, j) = DoGet("PROSPER.OUT.ESP.PUMPHD[5][" + j.ToString() + "]") * Num_Etapa
+
+
+                    If (j <= 5) Then
+                        RangeX(0, j) = DoGet("PROSPER.OUT.ESP.PMINRT[" + j.ToString() + "]")
+                        RangeX(1, j) = DoGet("PROSPER.OUT.ESP.PMAXRT[" + j.ToString() + "]")
+                        RangeX(2, j) = DoGet("PROSPER.OUT.ESP.PUMBER[" + j.ToString() + "]")
+
+                        RangeY(0, j) = DoGet("PROSPER.OUT.ESP.PMINHD[" + j.ToString() + "]") * Num_Etapa
+                        RangeY(1, j) = DoGet("PROSPER.OUT.ESP.PMAXHD[" + j.ToString() + "]") * Num_Etapa
+                        RangeY(2, j) = DoGet("PROSPER.OUT.ESP.PUMBEH[" + j.ToString() + "]") * Num_Etapa
+
+                    End If
+
+
+                Next j
+
+
+                'Dim indBomba As Integer = DoGet("PROSPER.SIN.ESP.DESPUMP")
+
+                'GralQuickLook = New MOD_POZO_QUICK() With {
+                '    .BC_PPR = DoGet("PROSPER.OUT.QLE.Output[0]"),
+                '    .BC_SVOLT = DoGet("PROSPER.OUT.QLE.Output[3]"),
+                '    .BC_PINPRES = DoGet("PROSPER.OUT.QLE.Output[4]"),
+                '    .BC_PDPRES = DoGet("PROSPER.OUT.QLE.Output[5]"),
+                '    .QLIQ = LiqRate,
+                '    .BC_DRATE = DoGet("PROSPER.OUT.QLE.Output[6]"),
+                '    .BC_GASFREE = DoGet("PROSPER.OUT.QLE.Output[7]"),
+                '    .BC_TOSH = DoGet("PROSPER.OUT.QLE.Output[9]"),
+                '    .BC_DACRP = DoGet("PROSPER.OUT.QLE.Output[10]"),
+                '    .BC_PHEAD = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead"),
+                '    .BC_PRATE = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
+                '}
+
+                Return True
+            Catch ex As Exception
+                Throw New Exception("Carta BEC: " + ex.Message)
+            End Try
+
+        End Function
+        Public Function Carta_BEC_() As Boolean
+            Try
+                If Equipment Then
+                    Bomba_BEC.Val = DoGet("PROSPER.SIN.ESP.DesPump")
+                    Motor_BEC.Val = DoGet("PROSPER.SIN.ESP.DesMotor")
+                    Cable_BEC.Val = DoGet("PROSPER.SIN.ESP.DesCable")
+                End If
+
+                'If Bombas.ContainsKey(Bomba_BEC.Val) = False Then
+                '    Throw New Exception("La bomba BEC no existe en el catálogo.")
+                'End If
+
+                'Dim Bom = Bombas(Bomba_BEC.Val)
+
+                '=======================================================
                 Dim poli As New RegLinPol
                 Xcarta_BEC = New ArrayList
                 Ycarta_BEC = New ArrayList
                 ReDim Rango_MinX_BEC(5), Rango_MinY_BEC(5), Mejor_EficX_BEC(5), Mejor_EficY_BEC(5), Rango_MaxX_BEC(5), Rango_MaxY_BEC(5)
                 'Dim Bomba_aux As String
-                Bombaaux_BEC = DoGet("PROSPER.ESP.PUMPNAME(" & CStr(Bomba_BEC.Val) & ")")
-                Dim elementos As String() = Bombaaux_BEC.Split(" ")
-                getBomba(elementos(0), elementos(1), elementos(2))
-                Dim frecuencia = BOMBA.FRECUENCIAHZ
-                Dim num_etapas = BOMBA.ETAPAS
-                Dim rang_minimo = BOMBA.MIN_RAN_OP
-                Dim rang_maximo = BOMBA.MAX_RAN_OP
-                Dim mejor_eficiencia = BOMBA.MEJOR_EFICIENCIA
-                Dim raiz = BOMBA.RAIZ
+                ' Bombaaux_BEC = DoGet("PROSPER.ESP.PUMPNAME(" & CStr(Bomba_BEC.Val) & ")")
+                ' Dim elementos As String() = Bombaaux_BEC.Split(" ")
+                ' getBomba(elementos(0), elementos(1), elementos(2))
+
+
+                Dim frecuencia = Frec_BEC.Val = DoGet("PROSPER.SIN.ESP.Frequency") 'BOMBA.FRECUENCIAHZ
+                Dim num_etapas = Etapas_BEC.Val = DoGet("PROSPER.SIN.ESP.Stages") 'BOMBA.ETAPAS
+                Dim rang_minimo = DoGet("Prosper.SIN.ESP.Pump.MinRate") 'Bom.MIN_RAN_OP
+                Dim rang_maximo = DoGet("Prosper.SIN.ESP.Pump.MaxRate") ' Bom.MAX_RAN_OP 'BOMBA.MAX_RAN_OP
+                Dim mejor_eficiencia = EfiSepGas_BEC.Val = DoGet("PROSPER.SIN.ESP.Efficiency") 'BOMBA.MEJOR_EFICIENCIA
+
+
+                'PWS = DoGet("PROSPER.SIN.IPR.Single.Pres")
+                'Bomba_Prof = DoGet("PROSPER.SIN.ESP.Depth")
+                'Efi_SepGas = DoGet("PROSPER.SIN.ESP.Efficiency")
+                'Num_Etapa = DoGet("PROSPER.SIN.ESP.Stages")
+                'Fac_desgaste = DoGet("PROSPER.SIN.ESP.Wear")
+                'Carga_Bombs = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead")
+                'Gasto_PyT_bomba = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
+
+                Dim raiz = 11 ' Bom.RAIZ ' Raiz cuadrada de la carta de la bmba
                 Dim xau(99) As Double
                 Dim yau(99) As Double
                 Dim xx As Double = 0
@@ -4313,8 +5998,9 @@ Public Class Crea
 
                 'DoCmd("PROSPER.MENU.OUTPUT.PLOT(7)")
                 'Dim xxd = DoGet("PROSPER.MENU.OUTPUT.PLOT(7)")
+                Return True
             Catch ex As Exception
-                Throw New Exception("Carta_BEC:" + ex.Message)
+                Throw New Exception("Carta BEC:" + ex.Message)
             End Try
         End Function
 
@@ -4332,6 +6018,8 @@ Public Class Crea
 
                 If BOMBA IsNot Nothing Then
                     coeficientes = contexto.COEFICIENTES.Include("DIVISIONES_COEFICIENTES").Where(Function(w) w.IDBOMBA = BOMBA.IDBOMBA).OrderBy(Function(K) K.DIVISIONES_COEFICIENTES.NOMBRE).ToList
+                Else
+                    Throw New Exception("No hay bomba disponible: Fab.: " + Fabricante + " | Mod.: " + MODELO + " | Medida:" + MED_PULGADAS.ToString())
                 End If
             End Using
 
@@ -4441,6 +6129,130 @@ Public Class Crea
         End Function
 
         ''' <summary>
+        ''' Permite leer las variables de sensibilidad
+        ''' </summary>
+        ''' <param name="Variables">Variables que se van a leer ejemplos: {"LiqRate","OilRate"}</param>
+        Public Sub ResultSystemVar(ByVal Variables() As String)
+            'Ejemplo: [138,6,1,etc]
+            Dim ListVars As New List(Of String)
+
+            For i = 0 To 9
+                Dim var = DoGet("Prosper.ANL.SYS.Sens.SensDB.Vars[" + i.ToString() + "]")
+                If GetVar(var) > 0 Then
+                    ListVars.Add(GetVar(var))
+                End If
+            Next
+
+            Dim index = 0
+
+            If ListVars.Count > 0 Then
+                ReDim SensVars(ListVars.Count - 1)
+                SensVarsVal = New Dictionary(Of Integer, List(Of Double)) 'Dim SensVarsVal(ListVars.Count - 1, 0)
+
+                For i = 0 To ListVars.Count - 1
+
+                    SensVars(i) = ListVars(i)
+
+                    Dim val As Integer = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[" + ListVars(i).ToString() + "].Vals.COUNT")
+
+                    SensVarsVal.Add(SensVars(i), New List(Of Double))
+
+                    For j = 0 To val - 1
+                        'PROSPER.ANL.SYS.Sens.SensDB.Sens[145].Vals[19]
+                        SensVarsVal(SensVars(i)).Add(DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[" + ListVars(i).ToString() + "].Vals[" + j.ToString() + "]"))
+                    Next
+                Next
+
+                Dim TotalResults As Integer = DoGet("PROSPER.OUT.SYS.Results.COUNT")
+
+
+                'If Variables.Contains("VLPpres") Then
+                '    ReDim VLPpres(TotalResults - 1)
+                'End If
+
+
+
+                If TotalResults > 0 Then
+                    If Variables.Contains("LiqRate") Then
+                        ReDim LiqRate(TotalResults - 1)
+                    End If
+                    If Variables.Contains("GasRate") Then
+                        ReDim GasRate(TotalResults - 1)
+                    End If
+                    If Variables.Contains("OilRate") Then
+                        ReDim LiqRate(TotalResults - 1)
+                    End If
+                    If Variables.Contains("WatRate") Then
+                        ReDim WatRate(TotalResults - 1)
+                    End If
+
+                    For i = 0 To TotalResults - 1
+                        If Variables.Contains("LiqRate") Then LiqRate(i) = DoGet("PROSPER.OUT.SYS.Results[" + i.ToString() + "].Sol.LiqRate")
+                        If Variables.Contains("GasRate") Then GasRate(i) = DoGet("PROSPER.OUT.SYS.Results[" + i.ToString() + "].Sol.GasRate")
+                        If Variables.Contains("OilRate") Then OilRate(i) = DoGet("PROSPER.OUT.SYS.Results[" + i.ToString() + "].Sol.OilRate")
+                        If Variables.Contains("WatRate") Then WatRate(i) = DoGet("PROSPER.OUT.SYS.Results[" + i.ToString() + "].Sol.WatRate")
+                        'If Variables.Contains("VLPpres") Then WatRate(i) = DoGet("PROSPER.OUT.SYS.Results[" + i.ToString() + "].VLPpres[0]")
+                    Next
+                End If
+
+            End If
+
+
+
+
+
+
+        End Sub
+
+        Private Function GetVar(ByVal IndexType As Integer) As Integer
+            ''           Type    Index	Variable Name
+            ''--------------------------------------------------------------
+            ''  16     6	Water Cut
+            ''  17   131	Gas Oil Ratio
+            ''   1     1	Reservoir Pressure
+            ''  53     2	Reservoir Temperature
+            ''   3     3	Productivity Index
+            ''  40   155	Water Oil Ratio
+            ''  19   156	Condensate Gas Ratio
+            ''  24   132	GLR Free
+            ''  25   133	Free Gas Rate
+            ''  33   134	GOR Free
+            ''  20   135	Total GOR
+            ''  39   136	Dissolved And Free GLR
+            ''  44   160	Gaslift Gas Specific Gravity
+            ''  22   138	Gaslift Gas Injection Rate
+            ''  23   139	GLR Injected
+            ''  31   140	Injection Depth
+            ''  27   145	Top Node Pressure
+            ''  26   144	Tubing Roughness
+            '' 334   195	Downhole Heat Transfer Coefficient
+            ''  21   147	Tubing/Pipe Diameter
+            '' 341   202	Downhole Equipment
+            '' 342   203	Surface Equipment
+            '' 367   242	Tubing Correlation
+            '' 368   243	Pipeline Correlation
+
+            Select Case IndexType
+                Case 16
+                    Return 6
+                Case 17
+                    Return 131
+                Case 1
+                    Return 1
+                Case 53
+                    Return 2
+                Case 22
+                    Return 138
+                Case 27
+                    Return 145
+                Case 35
+                    Return 148
+                Case Else
+                    Return 0
+            End Select
+        End Function
+
+        ''' <summary>
         ''' Se obtienen los resultados parciales del análisis de sensibilidad al % de agua
         ''' </summary>
         ''' <param name="CorrVert"></param>
@@ -4466,9 +6278,49 @@ Public Class Crea
             Dim SolGasRate(9, 9, 9), SolOilRate(9, 9, 9), SolWatRate(9, 9, 9), SolBHP(9, 9, 9)
             Dim SolWHPress(9, 9, 9), SolWHTempe(9, 9, 9) As Double
 
+
+            ''For I = 0 To NumVar1
+            ''    ' Volumen de gas de inyección
+            ''    Var1(I) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[" & ind & "].Vals[" & I & "]")
+            ''    'PROSPER.ANL.SYS.Sens.SensDB.Sen[J].Vals.Count
+
+            ''    'NumVar2 = IIf(NumVar2 = 0, DoGet("PROSPER.OUT.SYS.Results.[" + I.ToString() + "].COUNT") - 1, NumVar2)
+            ''    For J = 0 To NumVar2
+            ''        Var2(J) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" & J & "]")
+            ''        For K = 0 To NumVar3
+            ''            Var3(K) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals[" & K & "]")
+            ''            'For L = 0 To 19
+            ''            '    ' Producción de líquido
+            ''            '    If L = 17 Then Stop
+            ''            '    QLiqAnl(I, J, K, L) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].LiqRate[" & L & "]")
+            ''            '    QAcAnl(I, J, K, L) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].OilRate[" & L & "]")
+            ''            '    VLPPres(I, J, K, L) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].VLPpres[" & L & "]")
+            ''            '    IPRPres(I, J, K, L) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].IPRpres[" & L & "]")
+            ''            'Next L
+            ''            'TALVEZ NO ES NECESARIO USAR 3 INDICES CON 2 BASTA
+            ''            '========================================================================================================
+            ''            ''SolLiqRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.LiqRate")
+            ''            ''SolGasRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.GasRate")
+            ''            ''SolOilRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.OilRate")
+            ''            ''SolWatRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.WatRate")
+            ''            ''SolBHP(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.BHP")
+            ''            ''SolWHPress(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.WHPressure")
+            ''            ''SolWHTempe(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.WHTemperature")
+            ''        Next K
+            ''    Next J
+            ''Next I
+
+
+
+
+            L = 0
+
             For I = 0 To NumVar1
                 ' Volumen de gas de inyección
                 Var1(I) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[" & ind & "].Vals[" & I & "]")
+                'PROSPER.ANL.SYS.Sens.SensDB.Sen[J].Vals.Count
+
+                'NumVar2 = IIf(NumVar2 = 0, DoGet("PROSPER.OUT.SYS.Results.[" + I.ToString() + "].COUNT") - 1, NumVar2)
                 For J = 0 To NumVar2
                     Var2(J) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" & J & "]")
                     For K = 0 To NumVar3
@@ -4481,17 +6333,22 @@ Public Class Crea
                         '    VLPPres(I, J, K, L) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].VLPpres[" & L & "]")
                         '    IPRPres(I, J, K, L) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].IPRpres[" & L & "]")
                         'Next L
-                        SolLiqRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.LiqRate")
-                        'MsgBox(I.ToString & ", " & J.ToString & ", " & K.ToString & ": " & SolLiqRate(I, J, K).ToString)
-                        SolGasRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.GasRate")
-                        SolOilRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.OilRate")
-                        SolWatRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.WatRate")
-                        SolBHP(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.BHP")
-                        SolWHPress(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.WHPressure")
-                        SolWHTempe(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.WHTemperature")
+                        'TALVEZ NO ES NECESARIO USAR 3 INDICES CON 2 BASTA
+                        '========================================================================================================
+                        'SolLiqRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.LiqRate")
+                        'SolGasRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.GasRate")
+                        'SolOilRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.OilRate")
+                        'SolWatRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.WatRate")
+                        'SolBHP(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.BHP")
+                        'SolWHPress(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.WHPressure")
+                        'SolWHTempe(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.WHTemperature")
+
+                        SolLiqRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.LiqRate")
+                        L += 1
                     Next K
                 Next J
             Next I
+
         End Sub
 
         ''' <summary>
@@ -4554,26 +6411,29 @@ Public Class Crea
         ''' <returns></returns>
         ''' <remarks></remarks>
         Public Shared Function IndiceCorr(ByVal Cual As Integer) As Integer
-            '  0 DunsandRosModified
-            '  1 HagedornBrown
-            '  2 FancherBrown
-            '  3 Gray
-            '  4 MukerjeeBrill
-            '  5 BeggsandBrill
-            '  6 DuklerFlannigan
-            '  7 DuklerEatonFlannigan
-            '  8 PetroleumExperts
-            '  9 Orkiszewski
-            ' 10 PetroleumExperts2
-            ' 11 DunsandRosOriginal
-            ' 12 PetroleumExperts3
-            ' 13 BeggsandBrillGasHead
-            ' 14 GREmodifiedbyPE
-            ' 15 GREwithDSM
-            ' 16 GREoriginal
-            ' 17 GREwithAE
-            ' 18 PetroleumExperts4
-            ' 19 Hydro3P
+            ''  0   DunsandRosModified
+            ''	1   HagedornBrown
+            ''	2   FancherBrown
+            ''	4   MukerjeeBrill
+            ''	5   BeggsandBrill
+            ''	8   PetroleumExperts
+            ''	9   Orkiszewski
+            ''	10  PetroleumExperts2
+            ''	11  DunsandRosOriginal
+            ''	12  PetroleumExperts3
+            ''	14  GREmodifiedbyPE
+            ''	18  PetroleumExperts4
+            ''	19  Hydro3P
+            ''	20  PetroleumExperts5
+            ''	21  PE6HeavyOil
+            ''	25  Hydro2P
+            ''	28  OLGAS2P
+            ''	29  OLGAS3P
+            ''	30  OLGAS3PEXT
+            ''	31  LedaFlow2P
+            ''	32  LedaFlow3P
+
+
             Dim Indice As Integer
             Select Case Cual
                 Case 0 : Indice = 0   ': Correlac = "DunsandRosModified"
@@ -4590,6 +6450,9 @@ Public Class Crea
                 Case 11 : Indice = 18 ': Correlac = " PetroleumExperts4"
                 Case 12 : Indice = 19 ': Correlac = " Hydro3P"
                 Case 13 : Indice = 20 ': Correlac = " PetroleumExperts5"
+                Case 14 : Indice = 21 ': Correlac = " PE6HeavyOil"
+                Case 15 : Indice = 25 ': Correlac = " Hydro2P"
+
                 Case Else
                     Throw New Exception("Sin correlacion de FMV")
             End Select
@@ -4673,6 +6536,24 @@ Public Class Crea
         ''' <param name="Cual"> Indice de la correlación</param>
         ''' <returns> Nombre de la correlación deseada</returns>
         Public Function NombrCorr(Cual As Integer) As String
+            ' 0       DunsandRosModified
+            ' 1       HagedornBrown
+            ' 2       FancherBrown
+            ' 4       MukerjeeBrill
+            ' 5       BeggsandBrill
+            ' 8       PetroleumExperts
+            ' 9       Orkiszewski
+            ' 10      PetroleumExperts2
+            ' 11      DunsandRosOriginal
+            ' 12      PetroleumExperts3
+            ' 14      GREmodifiedbyPE
+            ' 18      PetroleumExperts4
+            ' 19      Hydro3P
+            ' 20      PetroleumExperts5
+            ' 21      OLGAS2P
+            ' 22      OLGAS3P
+            ' 23      OLGAS3PEXT
+
             Dim Correlac As String = ""
             Select Case Cual
                 Case 0 : Correlac = "DunsandRosModified"
@@ -5592,6 +7473,89 @@ Ciclo1:
             Return msg
         End Function
 
+
+        Public Function Tester(ByVal Command As String) As Object
+            Try
+                Me.Server = Connect(ProgramPath)
+                DoCmd(Command)
+
+                Disconnect()
+                Return Me.Server
+            Catch ex As Exception
+                Disconnect()
+                Throw New Exception(ex.Message)
+            End Try
+        End Function
+        Sub Validating()
+            'Dim Errors As New List(Of String
+            'GENERALES
+            '====================================================================================
+            If ValidMinMaxInt(Fluid) = False Then
+                Errors.Add("Error: " + Fluid.Nomb + ", actualmente: " + Fluid.Val.ToString())
+            End If
+            If ValidMinMaxInt(PVTModel) = False Then
+                Errors.Add("Error: " + PVTModel.Nomb + ", actualmente: " + PVTModel.Val.ToString())
+            End If
+            If ValidMinMaxInt(Separator) = False Then
+                Errors.Add("Error: " + Separator.Nomb + ", actualmente: " + Separator.Val.ToString())
+            End If
+            If ValidMinMaxInt(Emulsion) = False Then
+                Errors.Add("Error: " + Emulsion.Nomb + ", actualmente: " + Emulsion.Val.ToString())
+            End If
+            If ValidMinMaxInt(Hydrate) = False Then
+                Errors.Add("Error: " + Hydrate.Nomb + ", actualmente: " + Hydrate.Val.ToString())
+            End If
+            If ValidMinMaxInt(WatVis) = False Then
+                Errors.Add("Error: " + WatVis.Nomb + ", actualmente: " + WatVis.Val.ToString())
+            End If
+            If ValidMinMaxInt(VisMod) = False Then
+                Errors.Add("Error: " + VisMod.Nomb + ", actualmente: " + VisMod.Val.ToString())
+            End If
+            If ValidMinMaxInt(FlowType) = False Then
+                Errors.Add("Error: " + FlowType.Nomb + ", actualmente: " + FlowType.Val.ToString())
+            End If
+            If ValidMinMaxInt(WellType) = False Then
+                Errors.Add("Error: " + WellType.Nomb + ", actualmente: " + WellType.Val.ToString())
+            End If
+            If ValidMinMaxInt(LiftMethod) = False Then
+                Errors.Add("Error: " + LiftMethod.Nomb + ", actualmente: " + LiftMethod.Val.ToString())
+            End If
+            If ValidMinMaxInt(LiftType) = False Then
+                Errors.Add("Error: " + LiftType.Nomb + ", actualmente: " + LiftType.Val.ToString())
+            End If
+            If ValidMinMaxInt(Predict) = False Then
+                Errors.Add("Error: " + Predict.Nomb + ", actualmente: " + Predict.Val.ToString())
+            End If
+            If ValidMinMaxInt(TempModel) = False Then
+                Errors.Add("Error: " + TempModel.Nomb + ", actualmente: " + TempModel.Val.ToString())
+            End If
+            If ValidMinMaxInt(RangeSystem) = False Then
+                Errors.Add("Error: " + RangeSystem.Nomb + ", actualmente: " + RangeSystem.Val.ToString())
+            End If
+            If ValidMinMaxInt(OutputRes) = False Then
+                Errors.Add("Error: " + OutputRes.Nomb + ", actualmente: " + OutputRes.Val.ToString())
+            End If
+            If ValidMinMaxInt(Completion) = False Then
+                Errors.Add("Error: " + Completion.Nomb + ", actualmente: " + Completion.Val.ToString())
+            End If
+            If ValidMinMaxInt(GravelPack) = False Then
+                Errors.Add("Error: " + GravelPack.Nomb + ", actualmente: " + GravelPack.Val.ToString())
+            End If
+            If ValidMinMaxInt(InflowType) = False Then
+                Errors.Add("Error: " + InflowType.Nomb + ", actualmente: " + InflowType.Val.ToString())
+            End If
+            If ValidMinMaxInt(GasConing) = False Then
+                Errors.Add("Error: " + GasConing.Nomb + ", actualmente: " + GasConing.Val.ToString())
+            End If
+            If ValidMinMaxDouble(QTest) = False Then
+                Errors.Add("Error: " + QTest.Nomb + ", actualmente: " + QTest.Val.ToString())
+            End If
+
+            If FlagPvt = 0 Then
+                Errors.Add("No hay PVT generado en el archivo")
+            End If
+        End Sub
+
     End Class
 
     Public Shared Function GetFrmt(ByVal Cadena As String, ByVal Tipo As Byte) As String
@@ -5842,6 +7806,7 @@ Ciclo1:
         Next i
         DoCmd("PROSPER.PVT.MATCHALL")
     End Sub
+
 End Class
 
 

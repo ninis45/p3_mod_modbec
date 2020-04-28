@@ -96,6 +96,7 @@
     <Compile Include="Clases\Prosper.vb" />
     <Compile Include="Clases\Pvt.vb" />
     <Compile Include="Clases\SensGas.vb" />
+    <Compile Include="Clases\UpdateModelo.vb" />
     <Compile Include="Estabilidad.vb" />
     <Compile Include="Helpers\Array.vb" />
     <Compile Include="Libraries\Analisis.vb" />
@@ -145,6 +146,7 @@
       <LastGenOutput>Settings.Designer.vb</LastGenOutput>
     </None>
     <None Include="packages.config" />
+    <None Include="Resources\Generic_7_5.Out" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
@@ -161,4 +163,9 @@
     </COMReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties DocumentXCommentEditorState="&lt;HtmlEditState&gt;&#xA;  &lt;Attributes /&gt;&#xA;&lt;/HtmlEditState&gt;" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

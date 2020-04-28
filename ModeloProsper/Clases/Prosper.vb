@@ -61,9 +61,9 @@ Public Class Prosper
     End Function
     Public Shared Function Connect(ByVal ProgramPath As String) As Object
         Try
-            If Open Then
-                Shell(ProgramPath, AppWinStyle.NormalFocus)
-            End If
+
+            Shell(ProgramPath, AppWinStyle.NormalFocus)
+
 
 
             If Connected = False Then
