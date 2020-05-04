@@ -19,6 +19,9 @@ Public Interface IModelo
     Function Monitor(ByRef OpenServer As String) As List(Of String)
 
     <OperationContract()>
+    Function Dispose() As Boolean
+
+    <OperationContract()>
     Sub Program()
 
     <OperationContract()>
@@ -31,10 +34,13 @@ Public Interface IModelo
     Function Execute(ByVal IdModPozo As String, ByVal User As String) As Boolean
 
     <OperationContract()>
-    Function Reading(ByVal FileUpload As Byte(), ByVal FileName As String) As List(Of String)
+    Function Condicion(ByVal IdModPozo As String, ByVal User As String) As Boolean
 
-    '<OperationContract()>
-    'Function SensGas(ByVal IdModPozo As String, ByVal Qgi As Double, ByVal Pwh As Double, ByVal WC As Double) As List(Of Gas)
+    <OperationContract()>
+    Function Reading(ByVal LiftMethod As Integer, ByVal FileUpload As Byte(), ByVal FileName As String) As List(Of String)
+
+    <OperationContract()>
+    Function Estabilidad(ByVal IdModPozo As String) As Boolean
 
     <OperationContract()>
     Function Sensibilidad_BN(ByVal IdModPozo As String) As Boolean

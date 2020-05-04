@@ -15,6 +15,13 @@ Public Class Logger
         Me.Configuracion = db.CONFIGURACION_ADMINISTRADOR.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
 
         If Me.Configuracion Is Nothing Then
+            Dim Usuario As USUARIO = db.USUARIO.Find(IdUsuario)
+
+
+            If Usuario Is Nothing Then
+                Throw New Exception("El usuario no existe, favor de verificar datos.")
+            End If
+
             Me.Configuracion = New CONFIGURACION_ADMINISTRADOR() With {
                 .ESTATUS = 1,
                 .MAXREINTENTOS = 1,
@@ -64,21 +71,29 @@ Public Class Logger
 
         If Intentos + 1 > Me.Configuracion.MAXREINTENTOS Then
 
-            If Me.Configuracion.ESTATUS = 2 Then
-                SetEstatus(-1)
-            End If
+            'If Me.Configuracion.ESTATUS = 2 Then
+            '    SetEstatus(-1)
+            'End If
 
             Throw New Exception("Numero de intentos permitidos: " + Me.Configuracion.MAXREINTENTOS.ToString())
         End If
 
-        'If Me.Configuracion.ESTATUS = 1 Or Me.Configuracion.ESTATUS = 2 Then
+
         Me.Configuracion.ESTATUS = Estatus
-            db.Entry(Me.Configuracion).State = Entity.EntityState.Modified
-            db.SaveChanges()
-        ' End If
+        db.Entry(Me.Configuracion).State = Entity.EntityState.Modified
+        db.SaveChanges()
+
 
     End Sub
     Sub SetEstatus(ByVal Estatus As Integer, ByVal Message As String)
+        If Intentos + 1 > Me.Configuracion.MAXREINTENTOS Then
+
+            'If Me.Configuracion.ESTATUS = 2 Then
+            '    SetEstatus(-1)
+            'End If
+
+            Throw New Exception("Numero de intentos permitidos: " + Me.Configuracion.MAXREINTENTOS.ToString())
+        End If
 
         SetLog(Estatus, Message)
 

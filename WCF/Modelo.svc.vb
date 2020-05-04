@@ -7,6 +7,7 @@ Imports WCF.Generales
 Imports WCF.Helpers
 Imports ModeloCI
 Imports System.Data.Entity
+Imports System.Threading.Tasks
 
 Public Class Modelo
     Implements IModelo
@@ -79,7 +80,7 @@ Public Class Modelo
             Dim result = modelo.Create()
 
             If result Then
-                Logger.SetEstatus(3, "Ejecución correcta(Solicitado)")
+                Logger.SetEstatus(3, "Ejecución correcta(Remoto)")
             Else
                 Logger.SetEstatus(-1, "Hubo un error al realizar la operación")
             End If
@@ -97,17 +98,69 @@ Public Class Modelo
 
 
     End Function
-    Public Function Reading(ByVal FileUpload As Byte(), ByVal FileName As String) As List(Of String) Implements IModelo.Reading
+    Public Function Condicion(ByVal IdModPozo As String, ByVal User As String) As Boolean Implements IModelo.Condicion
+        Try
+            Dim modelo As New ModeloProsper.Modelo(IdModPozo)
+            Dim inicio As DateTime = DateTime.Now
+
+            Logger = New ModeloProsper.Logger(IdModPozo, User)
+            If ModeloProsper.Modelo.Dispose = False Then
+                Throw New Exception("Open server ocupado")
+            End If
+
+
+
+            Logger.SetEstatus(2)
+
+            Dim result = modelo.Update()
+
+            If result Then
+                Logger.SetEstatus(3, "Ejecución correcta(Remoto)")
+            Else
+                Logger.SetEstatus(-1, "Hubo un error al realizar la operación")
+            End If
+            Return True
+        Catch ex As Exception
+            If Logger IsNot Nothing AndAlso Logger.Configuracion.ESTATUS = 2 Then
+                Logger.SetEstatus(-1, ex.Message)
+            End If
+
+            Throw New Exception(ex.Message)
+        End Try
+    End Function
+    Public Function Reading(ByVal LiftMethod As Integer, ByVal FileUpload As Byte(), ByVal FileName As String) As List(Of String) Implements IModelo.Reading
         Dim modelo As New ModeloProsper.Modelo()
 
         If ModeloProsper.Modelo.Dispose = False Then
             Throw New Exception("Open server ocupado")
         End If
 
-        Return modelo.Reading(FileUpload, FileName)
+        Return modelo.Reading(LiftMethod, FileUpload, FileName)
     End Function
 
+    Public Function Estabilidad(ByVal IdModPozo As String) As Boolean Implements IModelo.Estabilidad
+        Dim Conf As CONFIGURACION = db.CONFIGURACION.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
 
+        Dim modelo As New ModeloProsper.Estabilidad(Conf)
+        Dim result As Boolean
+        Try
+            result = modelo.Execute()
+            'Dim Resultados = modelo.Mapa
+
+
+
+            modelo.Save()
+
+
+            Return result
+
+        Catch ex As Exception
+            Throw New Exception(ex.Message)
+        End Try
+
+
+
+    End Function
 
 
 
@@ -162,7 +215,7 @@ Public Class Modelo
             Dim result = modelo.Sensibilidad_BN()
 
             If result Then
-                Logger.SetEstatus(3, "Ejecución correcta(Solicitado)")
+                Logger.SetEstatus(3, "Ejecución correcta(Remoto)")
             Else
                 Logger.SetEstatus(-1, "Hubo un error al realizar la operación")
 
@@ -425,22 +478,26 @@ Public Class Modelo
 
     End Function
     Public Function Monitor(ByRef OpenServer As String) As List(Of String) Implements IModelo.Monitor
-        Dim Prosper = Settings.GetBy("open_server")
+        Dim Prosper As Integer
         Dim Messages As New List(Of String)
         Dim Estatus() As Integer = {0, 1, 2, -1}
 
-        Dim PxServer As Process() = Process.GetProcessesByName("pxserver")
 
-        If PxServer.Length = 0 Then
+
+        If ModeloProsper.Modelo.Dispose() Then
             Settings.SetBy("open_server", "1")
+            Prosper = 1
+        Else
+            Settings.SetBy("open_server", "0")
+            Prosper = 0
         End If
 
         If OpenServer <> Prosper Then
 
-            If PxServer.Length > 0 Then
-                Messages.Add(String.Format("Open Server: {0} | {1} ", PxServer.Length, DateTime.Now.ToString()))
+            If ModeloProsper.Modelo.Dispose() Then
+                Messages.Add(String.Format("Open Server: {0} | {1} ", "Disponible", DateTime.Now.ToString()))
             Else
-                Messages.Add(String.Format("Open Server: {0} | {1} ", "0", DateTime.Now.ToString()))
+                Messages.Add(String.Format("Open Server: {0} | {1} ", "Ocupado", DateTime.Now.ToString()))
             End If
 
 
@@ -475,6 +532,12 @@ Public Class Modelo
         Return Messages
     End Function
 
+
+
+
+    Public Function Dispose() As Boolean Implements IModelo.Dispose
+        Return ModeloProsper.Modelo.Dispose()
+    End Function
     Public Sub ShutDown() Implements IModelo.ShutDown
         ModeloProsper.Modelo.ShutDown()
     End Sub

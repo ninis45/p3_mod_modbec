@@ -106,11 +106,9 @@ Public Class Modelo
                     db.SaveChanges()
                 Else
 
-                    'If (intentos.Count + 1) > configuracion.MAXREINTENTOS Then
-                    '    configuracion.ESTATUS = 0
-                    'Else
+
                     configuracion.FECHA_PROGRAMACION = configuracion.FECHA_PROGRAMACION.AddMinutes(5)
-                    'End If
+
 
 
 
@@ -277,6 +275,7 @@ Public Class Modelo
                 MPrsp = New Crea.Modelo(edo_mecanico.Count, edo_trayectoria.Count, edo_temperatura.Count)
             End If
 
+            MPrsp.Version = Settings.GetBy("prosper_version")
             MPrsp.ProgramPath = ProgramPath ' IIf(Environment = "production", "C:\Program Files (x86)\Petroleum Experts\" + Settings.GetBy("prosper_version") + "\prosper.exe", "C:\Program Files (x86)\Petroleum Experts\IPM 7.5\prosper.EXE")  ' "C:\Program Files (x86)\Petroleum Experts\" + Settings.GetBy("prosper_version") + "\prosper.EXE" '' Settings.GetBy("prosper_version") Settings.GetBy("program_prosper")
 
             'Select Case mod_general.LIFTMETHOD
@@ -296,7 +295,8 @@ Public Class Modelo
 
                 MPrsp.Equipment = ModArchivo.equipment.GetValueOrDefault()
                 MPrsp.ArchivoPVT = "C:\PVTs\Tmps\" + NameMaster
-                File.WriteAllBytes(MPrsp.ArchivoPVT, ModArchivo.archivo)
+
+                If File.Exists(MPrsp.ArchivoPVT) = False Then File.WriteAllBytes(MPrsp.ArchivoPVT, ModArchivo.archivo)
 
                 FileAnl = Path + Names(0) + ".Anl"
                 FilePvt = Path + Names(0) + ".Pvt"
@@ -451,7 +451,7 @@ Public Class Modelo
             End If
         End If
     End Sub
-    Public Function Reading(ByVal FileB As Byte(), ByVal FileName As String) As List(Of String)
+    Public Function Reading(ByVal LiftMethod As Integer, ByVal FileB As Byte(), ByVal FileName As String) As List(Of String)
         Try
             Dim Paths = FileName.Split("\".ToCharArray())
             Dim NameMaster As String = Paths(Paths.Length - 1)
@@ -473,6 +473,10 @@ Public Class Modelo
 
             MPrsp.Execute()
             MPrsp.Validating()
+
+            If MPrsp.LiftMethod.Val <> LiftMethod Then
+                MPrsp.Errors.Add("El Sistema Artificial declarado en el archivo no corresponde con el pozo.")
+            End If
 
 
 
@@ -711,6 +715,7 @@ Public Class Modelo
             ModGeneral.QO = MPrsp.Qo.Val
             ModGeneral.QW = MPrsp.Qw.Val
             ModGeneral.PREDICT = MPrsp.Predict.Val
+            ModGeneral.RGATOTALAFORO = MPrsp.RGA_Aforo.Val
 
 
             db.Entry(ModGeneral).State = Entity.EntityState.Modified
@@ -2303,6 +2308,10 @@ Public Class Modelo
 
         Return Px
     End Function
+    ''' <summary>
+    ''' Verifica si el servidor Open Server esta diponible
+    ''' </summary>
+    ''' <returns>Retorna verdadadero si esta disponible</returns>
     Public Shared Function Dispose() As Boolean
         Dim Px = Process.GetProcessesByName("pxserver")
 

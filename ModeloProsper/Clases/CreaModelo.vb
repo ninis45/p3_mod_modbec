@@ -363,6 +363,9 @@ Public Class Crea
         Public RangeY(3, 99) As Double
 
 
+        Public Property Version As String
+
+
 #End Region
 
 #Region "Propiedades"
@@ -1905,7 +1908,7 @@ Public Class Crea
             ' Profundidad del BEC
             Prof_BEC.Nomb = "Profundidad del BEC [mD]" : Prof_BEC.Min = 0 : Prof_BEC.Max = 20000
             'Frecuencia de operación del BEC
-            Frec_BEC.Nomb = "Frecuencia de operación del BEC [Hz]" : Frec_BEC.Min = 10 : Frec_BEC.Max = 200
+            Frec_BEC.Nomb = "Frecuencia de operación del BEC [Hz]" : Frec_BEC.Min = 30 : Frec_BEC.Max = 200
             ' Diámetro exterior mayor del BEC
             ODMax_BEC.Nomb = "Diámetro exterior mayor del BEC [pulgadas]" : ODMax_BEC.Min = 1 : ODMax_BEC.Max = 20
             'Longitud del cable del BEC
@@ -2528,7 +2531,7 @@ Public Class Crea
                 ' Gasto de gas disuelto @ Pws y Tws (MMpie3/día)
                 Qg_PTy = (GOR_PTy * Qo.Val * 5.615) / 1000000
                 ' Gasto de gas del aforo (MMpie3/día)
-                Qg_Aforo = (5.615 * RGA_Aforo.Val * Qo.Val) / 1000000
+                Qg_Aforo = (5.615 * RGA_Aforo.Val * Qo.Val) / 1000000 'ESTA VARIABLE NOMAS SIRVE PARA DOS COSAS
                 ' Relacion Gas Libre Aceite
                 GORFree = 0 '((Qg_Aforo - Qg_PTy) * 1000000) / (Qo.Val * 5.615)
                 ' Gasto de gas libre (MMpie3/día)
@@ -2536,9 +2539,11 @@ Public Class Crea
                 '  Gasto de gas total (MMpie3/día)
                 Qg_Total = Qg_Libre + Qg_PTy
                 ' Relación gas aceite total
-                GOR_Total = GOR_PTy + GORFree
+                'GOR_Total = GOR_PTy + GORFree Eliminado
 
                 ' RGIL ((Qgi/QL) * 1e6)/5.615
+
+
                 GLRiny.Val = GLRate.Val / QTest.Val * 1000000 / 5.615
                 GrvGas = DoGet("PROSPER.PVT.INPUT.GRVGAS")
                 API = DoGet("PROSPER.PVT.INPUT.API")
@@ -2976,6 +2981,7 @@ Public Class Crea
                     TRes.Val = DoGet("PROSPER.Sin.IPR.Single.Tres")
                     Wc.Val = DoGet("PROSPER.SIN.IPR.Single.Wc")
                     GOR_Total = DoGet("PROSPER.Sin.IPR.Single.totgor")
+                    TotGor.Val = GOR_Total
 
                     Compact.Val = DoGet("PROSPER.SIN.IPR.Single.Compact")
                     IRELK.Val = DoGet("PROSPER.SIN.IPR.Single.IRELK")
@@ -3142,6 +3148,8 @@ Public Class Crea
                     ' Profundidad de la valvula de inyeccion
                     ValveDepth.Val = DoGet("PROSPER.SIN.GLF.ValveDepth")
 
+                    If Version = "IPM 11" Then DiamValBNC.Val = DoGet("PROSPER.SIN.GLF.OrificeDia")
+
 
                 Else
                     'Configura el sistema artificial de producción de bombeo neumático
@@ -3169,6 +3177,8 @@ Public Class Crea
                     DoSet("PROSPER.SIN.GLF.Method", Method.Val)
                     ' Profundidad de la valvula de inyeccion
                     DoSet("PROSPER.SIN.GLF.ValveDepth", ValveDepth.Val)
+
+                    If Version = "IPM 11" Then DoSet("PROSPER.SIN.GLF.OrificeDia", DiamValBNC.Val)
                 End If
                 Return True
             Catch ex As Exception
@@ -3424,10 +3434,8 @@ Public Class Crea
                 ' Etiqueta
                 VLPLABEL = "Prof. Estabilizacion"
                 'Dim IndexTest As Integer = 0
-
+                TestIndex = 0
                 If Equipment Then
-                    ' Desde (DunsandRosModified) hasta (PetroleumExperts3)
-                    NumCorr.Val = 15
                     'Buscamos el test
                     '====================================================
                     Dim TotalTests As Integer = DoGet("PROSPER.ANL.VMT.DATA.COUNT")
@@ -3470,151 +3478,9 @@ Public Class Crea
                     ' Profundidad de la valvula de inyeccion.
                     ValveDepth.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].IDEPTH")
 
-                    DiamValBNC.Val = DoGet("PROSPER.SIN.GLF.OrificeDia")
+                    ' DiamValBNC.Val = DoGet("PROSPER.SIN.GLF.OrificeDia") DEPRECIADO EN V 7.5 Y ASIGNADO DIRECTAMENTE AL QUICKLOOK
 
                     Htc = DoGet("Prosper.ANL.VMT.Data[" + TestIndex.ToString() + "].Uvalue")
-
-
-                    ''CARGAR DATOS GENERALES TCC
-
-                    DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
-
-                    ' Comparación de correlaciones
-                    ' Presión en la cabeza del pozo (Pth)
-                    DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
-                    ' Corte de Agua. (Relación agua aceite WC)
-                    DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
-                    ' Producción de liquido
-                    DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
-                    ' Relación gas aceite
-                    DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
-                    ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
-                    DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
-
-                    DoSet("PROSPER.ANL.TCC.GLRate", GLRate.Val)
-                    DoSet("PROSPER.ANL.TCC.GLDepth", ValveDepth.Val)
-
-
-                    ' Tipo de producción
-                    ' 0 : Producción de liquido
-                    ' 1 : Producción de aceite
-                    DoSet("PROSPER.ANL.TCC.RateType", 0)
-
-                    DoSet("PROSPER.ANL.TCC.Pipe", 5)
-
-                    ' EMR del estadomecánico
-                    TCCMsd = 1
-
-                    ' Datos medidos
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", NivMedDisp.Val)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
-
-
-                    'Agregado 04 Dic 2019
-                    RGA_Aforo.Val = GOR_PTy
-                    TotGor.Val = GOR_PTy
-
-
-                    For i = 0 To NumCorr.Val - 1 ' Solo hasta Hidro 2P
-                        DoSet("PROSPER.ANL.TCC.Corr[" + i.ToString() + "]", 1)
-                    Next i
-                    DoCmd("PROSPER.ANL.TCC.CALC")
-
-
-                    Dim Indice = 0, J As Integer
-                    'Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val - 1) As Double
-                    ReDim NumCor(NumCorr.Val - 1), NomCorr(NumCorr.Val - 1)
-                    Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val - 1) As Double
-                    ReDim ProfDesa(NumCorr.Val - 1, 100)
-                    ReDim TVDCC(NumCorr.Val - 1, 100)
-                    ReDim PresWf(NumCorr.Val - 1, 100)
-                    ReDim NumDatCorr(NumCorr.Val - 1)
-
-
-                    'Dim IndiceCorr As Integer
-                    Dim max As Integer = 0
-
-                    'RESULTADOS
-                    '=======================================================================================
-                    For i = 0 To NumCorr.Val - 1
-
-                        Dim IndiceTmp = CStr(IndiceCorr(i))
-                        Dim TotalCorrs As Integer = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].COUNT")
-
-
-
-                        If TotalCorrs > max Then
-                            max = TotalCorrs
-                            ReDim Preserve ProfDesa(NumCorr.Val - 1, max - 1)
-                            ReDim Preserve TVDCC(NumCorr.Val - 1, max - 1)
-                            ReDim Preserve PresWf(NumCorr.Val - 1, max - 1)
-                        End If
-
-
-                        If TotalCorrs > 0 Then
-                            'ReDim Preserve PwfCC(Indice), DifPwf(Indice), NomCorr(Indice), NumCor(Indice)
-                            For J = 0 To TotalCorrs - 1
-
-
-                                ' Etiqueta
-                                'LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
-                                ' Profundidad desarrollada
-                                ProfDesa(i, J) = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].MSD[" & CStr(J) & "]")
-                                ' Profundidad vertical
-                                TVDCC(i, J) = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].TVD[" & CStr(J) & "]")
-                                ' Presion
-                                PresWf(i, J) = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp.ToString() + "].Pres[" & CStr(J) & "]")
-                                ' Temperatura
-                                'TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
-                                ' Profundidad desarrollada
-                                TMSDCC = ProfDesa(i, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
-                                TMSDCC = Math.Round(TMSDCC, 0)
-                                NumDatCorr(Indice) = J
-                                'J = J + 1
-                                ' Loop
-                            Next
-
-
-                            NumCor(Indice) = i
-                            NomCorr(Indice) = NombrCorr(i)
-                            PwfCC(Indice) = PresWf(i, J - 1)
-                            DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
-
-                            Indice += 1
-                        End If
-
-                        Dim Param1 As Double = DoGet("PROSPER.ANL.COR.CORR[" + IndiceTmp.ToString() + "].A[0]")
-                        Dim Param2 As Double = DoGet("PROSPER.ANL.COR.CORR[" + IndiceTmp.ToString() + "].A[1]")
-
-                        If Param1 <> 1 Or Param2 <> 1 Then
-                            CorrVFP = NumCor(i)
-                            CorrIndex = NumCor(i)
-                        End If
-
-                        ' PwfCC(Indice) = PresWf(Indice, J - 1)
-                        'DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
-                        'NumCor(i) = i
-                        'NomCorr(i) = NombrCorr(i)
-
-
-
-
-
-
-
-                    Next
-
-                    'If DifPwf Is Nothing Then
-                    '    Throw New Exception("No hay resultado de  correlaciones.")
-                    'End If
-                    'Call SortBubble(DifPwf.Count(), NumCor, NomCorr, DifPwf, 3, True)
-
-                    'CorrVFP = NumCor(0)
-                    'CorrIndex = NumCor(0)
-
-                    Return True
                 Else
                     DoSet("PROSPER.ANL.VMT.RATETYPE", RATETYPE)
                     DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].ENABLE", ENABLE)
@@ -3643,212 +3509,191 @@ Public Class Crea
                     ' Profundidad de la valvula de inyeccion.
                     DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].IDEPTH", ValveDepth.Val)
                     ' diametro de la valvulta bn
-                    DoSet("PROSPER.SIN.GLF.OrificeDia", DiamValBNC.Val)
-
-
-
+                    'DoSet("PROSPER.SIN.GLF.OrificeDia", DiamValBNC.Val) NO EXISTE EN LA VERSION 7.5
 
 
                     ' Se procede a realizar el ajuste 
                     DoCmd("PROSPER.ANL.VMT.UVAL")
-
                     Htc = DoGet("Prosper.ANL.VMT.Data[" & CStr(0) & "].Uvalue")
 
 
 
                     DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
-
-
-                    ' Comparación de correlaciones
-                    ' Presión en la cabeza del pozo (Pth)
-                    DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
-                    ' Corte de Agua. (Relación agua aceite WC)
-                    DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
-                    ' Producción de liquido
-                    DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
-                    ' Relación gas aceite
-                    DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
-                    ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
-                    DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
-
-                    DoSet("PROSPER.ANL.TCC.GLRate", GLRate.Val)
-                    DoSet("PROSPER.ANL.TCC.GLDepth", ValveDepth.Val)
-
-
-
-                    ' Tipo de producción
-                    ' 0 : Producción de liquido
-                    ' 1 : Producción de aceite
-                    DoSet("PROSPER.ANL.TCC.RateType", 0)
-
-                    '
-                    ' Correlación de la linea de descarga
-                    '
-                    ' 2  FancherBrown
-                    ' 4  MukerjeeBrill
-                    ' 5  BeggsandBrill
-                    ' 6  DuklerFlannigan
-                    ' 7  DuklerEatonFlannigan
-                    ' 13 BeggsandBrillGasHead
-                    ' 14 GREmodifiedbyPE
-                    ' 15 GREwithDSM
-                    ' 16 GREoriginal
-                    ' 17 GREwithAE
-                    ' 18 PetroleumExperts4
-                    ' 19 Hydro3P
-                    ' 20 PetroleumExperts5
-                    ' 21 OLGAS2P
-                    ' 22 OLGAS3P
-                    ' 23 OLGAS3PEXT
-                    '
-                    DoSet("PROSPER.ANL.TCC.Pipe", 5)
-
-                    ' EMR del estadomecánico
-                    TCCMsd = 1
-
-                    ' Datos medidos
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", NivMedDisp.Val)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
-
-                    ' Use the following list to to determine the value of corrname to select the correlation by name
-                    '
-                    ' 0       DunsandRosModified
-                    ' 1       HagedornBrown
-                    ' 2       FancherBrown
-                    ' 3       MukerjeeBrill
-                    ' 4       BeggsandBrill
-                    ' 5       PetroleumExperts
-                    ' 6       Orkiszewski
-                    ' 7       PetroleumExperts2
-                    ' 8       DunsandRosOriginal
-                    ' 9       PetroleumExperts3
-                    ' 10      GREmodifiedbyPE
-                    ' 11      PetroleumExperts4
-                    ' 12      Hydro3P
-                    ' 13      PetroleumExperts5
-                    ' 14      OLGAS2P
-                    ' 15      OLGAS3P
-                    ' 16      OLGAS3PEXT
-
-                    For I = 0 To 9 ' Solo hasta petroleum Expert 3
-                        DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 1)
-                    Next I
-
-
-
-                    DoCmd("PROSPER.ANL.TCC.CALC")
-
-                    '
-                    ' Resultados de Comparación de Correlaciones 
-                    '
-                    Dim Indice, J As Integer
-                    Dim IndiceTmp As String
-                    ReDim NumCor(NumCorr.Val - 1)
-
-                    ReDim ProfDesa(NumCorr.Val - 1, 100)
-                    ReDim TVDCC(NumCorr.Val - 1, 100)
-                    ReDim PresWf(NumCorr.Val - 1, 100)
-                    ReDim NumDatCorr(NumCorr.Val - 1)
-                    ReDim NomCorr(NumCorr.Val - 1)
-                    'Dim NumCor(NumCorr.Val - 1) As Integer
-                    Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
-                    Dim LabelCC(NumCorr.Val - 1, 100) As String
-                    Dim TempCC(NumCorr.Val - 1, 100) As Double
-
-                    TMSDCC = Int(0)
-
-
-                    Dim max As Integer = 0
-
-                    ' Resultados: Escribe en la hoja comparacion de correlaciones
-                    For Indice = 0 To NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
-                        IndiceTmp = CStr(IndiceCorr(Indice))
-                        J = 0
-
-                        Dim TotalCorrs As Integer = Integer.Parse(DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp + "].COUNT"))
-                        If TotalCorrs > max Then
-                            max = TotalCorrs
-                            ReDim Preserve ProfDesa(NumCorr.Val - 1, max - 1)
-                            ReDim Preserve TVDCC(NumCorr.Val - 1, max - 1)
-                            ReDim Preserve PresWf(NumCorr.Val - 1, max - 1)
-                        End If
-                        ' Do Until (TMSDCC >= Math.Round(NivMedDisp.Val - 0.5, 0)) ' For j = 1 To 100
-                        For J = 0 To TotalCorrs - 1
-
-
-
-                            ' Etiqueta
-                            LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
-                            ' Profundidad desarrollada
-                            ProfDesa(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(J) & "]")
-                            ' Profundidad vertical
-                            TVDCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].TVD[" & CStr(J) & "]")
-                            ' Presion
-                            PresWf(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Pres[" & CStr(J) & "]")
-                            ' Temperatura
-                            TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
-                            ' Profundidad desarrollada
-                            TMSDCC = ProfDesa(Indice, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
-                            TMSDCC = Math.Round(TMSDCC, 0)
-                            NumDatCorr(Indice) = J
-                            'J = J + 1
-                            ' Loop
-                        Next
-                        ' Presion en el intevalo medio productor
-                        PwfCC(Indice) = PresWf(Indice, J - 1)
-                        DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
-                        NumCor(Indice) = Indice
-                        NomCorr(Indice) = NombrCorr(Indice)
-                        ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
-                        TMSDCC = 0
-                    Next Indice
-
-
-                    For Indice = 0 To 23
-                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(Indice) & "]", 0)
-                    Next Indice
-
-                    ' Se ordenan las correlaciones de menor diferencia de presion a mayor diferencia DifPwf
-                    Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
-
-
-                    '' Se seleccionan la correlaciones del mejor ajuste 'MIgrado a VLPIPR
-                    'DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
-                    'DoCmd("PROSPER.ANL.VMT.CALC")
-
-                    CorrVFP = NumCor(0)
-                    CorrIndex = NumCor(0)
-
-                    Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
-                    '' DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0)) & ",0)") AL PARECER SE LLAMA EN LA FUNCION VLP_IPR()
-
-
-
-
-
-
-
-
-                    ''' Se des seleccionan todas las correlaciones en "VLP Maching - Adjust IPR"
-                    'For Indice = 0 To 23
-                    '    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(Indice) & "]", 0)
-                    'Next Indice
-                    ''Prosper.ANL.VMT.Corr
-                    '' Se selecciona la mejor correlacion
-                    'DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
-                    'DoCmd("PROSPER.ANL.VMT.CALC")
-                    'If Settings.GetBy("prosper_version") = "IPM 7.5" Then
-                    '    DoCmd("PROSPER.ANL.VMT.CALC")
-                    'End If
-
-                    'CorrVFP = NumCor(0)
-                    'CorrIndex = NumCor(0)
-
-                    'Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
-                    'DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0) + 1) & ",1)")
                 End If
+
+                If NivMedDisp.Val = 0 Then
+                    NivMedDisp.Val = Depth.Val(NumDatEdoMec.Val - 1)
+                End If
+
+                ' Comparación de correlaciones
+                ' Presión en la cabeza del pozo (Pth)
+                DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
+                ' Corte de Agua. (Relación agua aceite WC)
+                DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
+                ' Producción de liquido
+                DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
+                ' Relación gas aceite
+                DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
+                ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
+                DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
+
+                DoSet("PROSPER.ANL.TCC.GLRate", GLRate.Val)
+                DoSet("PROSPER.ANL.TCC.GLDepth", ValveDepth.Val)
+
+
+
+                ' Tipo de producción
+                ' 0 : Producción de liquido
+                ' 1 : Producción de aceite
+                DoSet("PROSPER.ANL.TCC.RateType", 0)
+
+                '
+                ' Correlación de la linea de descarga
+                '
+                ' 2  FancherBrown
+                ' 4  MukerjeeBrill
+                ' 5  BeggsandBrill
+                ' 6  DuklerFlannigan
+                ' 7  DuklerEatonFlannigan
+                ' 13 BeggsandBrillGasHead
+                ' 14 GREmodifiedbyPE
+                ' 15 GREwithDSM
+                ' 16 GREoriginal
+                ' 17 GREwithAE
+                ' 18 PetroleumExperts4
+                ' 19 Hydro3P
+                ' 20 PetroleumExperts5
+                ' 21 OLGAS2P
+                ' 22 OLGAS3P
+                ' 23 OLGAS3PEXT
+                '
+                DoSet("PROSPER.ANL.TCC.Pipe", 5)
+
+                ' EMR del estadomecánico
+                TCCMsd = 1
+
+                ' Datos medidos
+                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
+                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", NivMedDisp.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
+
+                ' Use the following list to to determine the value of corrname to select the correlation by name
+                '
+                ' 0       DunsandRosModified
+                ' 1       HagedornBrown
+                ' 2       FancherBrown
+                ' 3       MukerjeeBrill
+                ' 4       BeggsandBrill
+                ' 5       PetroleumExperts
+                ' 6       Orkiszewski
+                ' 7       PetroleumExperts2
+                ' 8       DunsandRosOriginal
+                ' 9       PetroleumExperts3
+                ' 10      GREmodifiedbyPE
+                ' 11      PetroleumExperts4
+                ' 12      Hydro3P
+                ' 13      PetroleumExperts5
+                ' 14      OLGAS2P
+                ' 15      OLGAS3P
+                ' 16      OLGAS3PEXT
+
+                For I = 0 To NumCorr.Val - 1 ' Solo hasta petroleum Expert 3
+                    DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 1)
+                Next I
+
+
+
+                DoCmd("PROSPER.ANL.TCC.CALC")
+
+                '
+                ' Resultados de Comparación de Correlaciones 
+                '
+                Dim Indice, J As Integer
+                Dim IndiceTmp As String
+                ReDim NumCor(NumCorr.Val - 1)
+
+                ReDim ProfDesa(NumCorr.Val - 1, 100)
+                ReDim TVDCC(NumCorr.Val - 1, 100)
+                ReDim PresWf(NumCorr.Val - 1, 100)
+                ReDim NumDatCorr(NumCorr.Val - 1)
+                ReDim NomCorr(NumCorr.Val - 1)
+                'Dim NumCor(NumCorr.Val - 1) As Integer
+                Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
+                Dim LabelCC(NumCorr.Val - 1, 100) As String
+                Dim TempCC(NumCorr.Val - 1, 100) As Double
+
+                TMSDCC = Int(0)
+
+
+                Dim max As Integer = 0
+
+                ' Resultados: Escribe en la hoja comparacion de correlaciones
+                For Indice = 0 To NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
+                    IndiceTmp = CStr(IndiceCorr(Indice))
+                    J = 0
+
+                    Dim TotalCorrs As Integer = Integer.Parse(DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp + "].COUNT"))
+                    If TotalCorrs > max Then
+                        max = TotalCorrs
+                        ReDim Preserve ProfDesa(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve TVDCC(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve PresWf(NumCorr.Val - 1, max - 1)
+                    End If
+                    ' Do Until (TMSDCC >= Math.Round(NivMedDisp.Val - 0.5, 0)) ' For j = 1 To 100
+                    For J = 0 To TotalCorrs - 1
+
+
+
+                        ' Etiqueta
+                        LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
+                        ' Profundidad desarrollada
+                        ProfDesa(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(J) & "]")
+                        ' Profundidad vertical
+                        TVDCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].TVD[" & CStr(J) & "]")
+                        ' Presion
+                        PresWf(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Pres[" & CStr(J) & "]")
+                        ' Temperatura
+                        TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
+                        ' Profundidad desarrollada
+                        TMSDCC = ProfDesa(Indice, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
+                        TMSDCC = Math.Round(TMSDCC, 0)
+                        NumDatCorr(Indice) = J
+                        'J = J + 1
+                        ' Loop
+                    Next
+                    ' Presion en el intevalo medio productor
+                    PwfCC(Indice) = PresWf(Indice, J - 1)
+                    DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
+                    NumCor(Indice) = Indice
+                    NomCorr(Indice) = NombrCorr(Indice)
+                    ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
+                    TMSDCC = 0
+                Next Indice
+
+                For Indice = 0 To 23
+                    DoSet("PROSPER.ANL.VMT.Corr[" + Indice.ToString() + "]", 0)
+                Next Indice
+
+                ' Se ordenan las correlaciones de menor diferencia de presion a mayor diferencia DifPwf
+                Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
+
+
+                '' Se seleccionan la correlaciones del mejor ajuste 'MIgrado a VLPIPR
+                'DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                'DoCmd("PROSPER.ANL.VMT.CALC")
+
+                CorrVFP = NumCor(0)
+                CorrIndex = NumCor(0)
+
+                Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
+                '' DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0)) & ",0)") AL PARECER SE LLAMA EN LA FUNCION VLP_IPR()
+
+
+
+
+
+
 
 
 
@@ -3873,16 +3718,14 @@ Public Class Crea
                 ENABLE = 0
                 ' Etiqueta
                 VLPLABEL = "Prof. Estabilizacion"
-
+                TestIndex = -1
 
                 If Equipment Then
                     Dim TotalTests As Integer = DoGet("PROSPER.ANL.VMT.DATA.COUNT")
-
-
-
                     If TotalTests = 0 Then
                         Throw New Exception("No hay tests disponibles")
                     End If
+
 
                     For i = 0 To TotalTests - 1
 
@@ -3893,6 +3736,11 @@ Public Class Crea
                         End If
 
                     Next
+
+                    If TestIndex = -1 Then
+                        DoSet("PROSPER.ANL.VMT.DATA[0].ENABLE", 0)
+                        TestIndex = 0
+                    End If
 
                     ' Presion en la cabeza del pozo (Pth)
                     THPres.Val = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].THPRES")
@@ -3913,7 +3761,7 @@ Public Class Crea
                     ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
                     GORFree = DoGet("PROSPER.ANL.VMT.DATA[" + TestIndex.ToString() + "].GORFREE")
                     'Freccuencia de operación 
-                    Frec_BEC.Val = DoGet("PROSPER.ANL.VMT.Data[" + TestIndex.ToString() + "].Freq")
+                    If Frec_BEC.Val = 0 Then Frec_BEC.Val = DoGet("PROSPER.ANL.VMT.Data[" + TestIndex.ToString() + "].Freq")
                     'Factor de desgaste de la bomba
                     Desgaste_BEC.Val = DoGet("PROSPER.ANL.VMT.Data[" + TestIndex.ToString() + "].Wear")
                     'Presión de succión de la bomba
@@ -3922,6 +3770,8 @@ Public Class Crea
                     PreDes_BEC.Val = DoGet("PROSPER.ANL.VMT.Data[" + TestIndex.ToString() + "].PDP")
 
                     RGA_Aforo.Val = GORFree + GOR_PTy
+
+                    'Htc = DoGet("Prosper.ANL.VMT.Data[" + TestIndex.ToString() + "].Uvalue")
                 Else
 
                     'NECESARIO PARA VLP - IPR
@@ -3957,27 +3807,324 @@ Public Class Crea
                     'Presión de descarga de la bomba
                     DoSet("PROSPER.ANL.VMT.Data[0].PDP", PreDes_BEC.Val)
 
+                    ' Se procede a realizar el ajuste 
+                    DoCmd("PROSPER.ANL.VMT.UVAL")
+
                     TestIndex = 0
 
                 End If
 
-                If QTest.Val < QTest.Min Then
+                Htc = DoGet("Prosper.ANL.VMT.Data[" + TestIndex.ToString() + "].Uvalue")
+                DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
+
+
+
+                If Prof_BEC.Val = 0 Then
+                    Prof_BEC.Val = Depth.Val(NumDatEdoMec.Val - 1)
+                End If
+
+                If Prof_BEC.Val = 0 Then
+                    Throw New Exception("Profundidad del BEC debe ser mayor a cero")
+                End If
+
+
+                If IPRMethod.Val = 1 And QTest.Val < QTest.Min Then
                     Throw New Exception("Producción de liquido debe ser al menos " + QTest.Min.ToString())
                 End If
 
+
+
+                '' Se actualizan algunos cambios
+                ''DoCmd("PROSPER.Refresh")
+                '' Se procede a realizar el ajuste 
+                'DoCmd("PROSPER.ANL.VMT.UVAL")
+
+                'Htc = DoGet("Prosper.ANL.VMT.Data[" + TestIndex.ToString() + "].Uvalue")
+
+                'DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
+
+
+                'COMPARACION DE CORRELACIONES
+                '====================================================================================
+                ' Comparación de correlaciones
+                ' Presión en la cabeza del pozo (Pth)
+                DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
+                ' Corte de Agua. (Relación agua aceite WC)
+                DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
+                ' Producción de liquido
+                DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
+                ' Relación gas aceite
+                DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
+                ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
+                DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
+
+
+
+                ' Tipo de producción
+                ' 0 : Producción de liquido
+                ' 1 : Producción de aceite
+                DoSet("PROSPER.ANL.TCC.RateType", 0)
+
+                '
+                ' Correlación de la linea de descarga
+                '
+                ' 2  FancherBrown
+                ' 4  MukerjeeBrill
+                ' 5  BeggsandBrill
+                ' 6  DuklerFlannigan
+                ' 7  DuklerEatonFlannigan
+                ' 13 BeggsandBrillGasHead
+                ' 14 GREmodifiedbyPE
+                ' 15 GREwithDSM
+                ' 16 GREoriginal
+                ' 17 GREwithAE
+                ' 18 PetroleumExperts4
+                ' 19 Hydro3P
+                ' 20 PetroleumExperts5
+                ' 21 OLGAS2P
+                ' 22 OLGAS3P
+                ' 23 OLGAS3PEXT
+                '
+                DoSet("PROSPER.ANL.TCC.Pipe", 5)
+
+                ' EMR del estadomecánico
+                TCCMsd = 0
+
+                ' Datos medidos
+                'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
+                'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", Prof_BEC.Val)
+                'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
+                'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
+
+                'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", 2133.6)
+                'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", 2133.6)
+                'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", 164.174)
+                'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", 0.55809)
+
+                ' Use the following list to to determine the value of corrname to select the correlation by name
+                '
+                ' 0       PROSPER.ANL.VMT.Data[0].PIP
+                ' 1       HagedornBrown
+                ' 2       FancherBrown
+                ' 3       MukerjeeBrill
+                ' 4       BeggsandBrill
+                ' 5       PetroleumExperts
+                ' 6       Orkiszewski
+                ' 7       PetroleumExperts2
+                ' 8       DunsandRosOriginal
+                ' 9       PetroleumExperts3
+                ' 10      GREmodifiedbyPE
+                ' 11      PetroleumExperts4
+                ' 12      Hydro3P
+                ' 13      PetroleumExperts5
+                ' 14      OLGAS2P
+                ' 15      OLGAS3P
+                ' 16      OLGAS3PEXT
+
+                For I = 0 To NumCorr.Val - 1  ' Solo hasta petroleum Expert 3
+                    DoSet("PROSPER.ANL.TCC.Corr[" + I.ToString() + "]", 1)
+                Next I
+
+                ''NUEVO MARDOQUEO
+                'DoSet("PROSPER.ANL.TCC.Corr[" & NumCor(0) & "]", 1)
+                'DoCmd("PROSPER.ANL.TCC.CALC")
+                'Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & NumCor(0) & "].Pres[160]")
+                'DoSet("PROSPER.SIN.IPR.Single.Ptest", Pwfcalc)
+                'DoCmd("PROSPER.IPR.CALC")
+                ''TERMINA NUEVO MARDOQUEO
+
+                ' Datos medidos
+                DoSet("PROSPER.ANL.TCC.Comp[0].Msd", TCCMsd)
+                DoSet("PROSPER.ANL.TCC.Comp[1].Msd", Prof_BEC.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[0].Prs", THPres.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[1].Prs", PreDes_BEC.Val)
+
+                'For i = 0 To 9
+                '    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(i) & "]", 1)
+                'Next i
+
+                DoCmd("PROSPER.ANL.TCC.CALC")
+
+
+
+                Dim Indice, J As Integer
+                Dim IndiceTmp As String
+                ReDim NumCor(NumCorr.Val - 1)
+                ReDim ProfDesa(NumCorr.Val - 1, 10)
+                ReDim TVDCC(NumCorr.Val - 1, 10)
+                ReDim PresWf(NumCorr.Val - 1, 10)
+                ReDim NumDatCorr(NumCorr.Val - 1)
+                ReDim NomCorr(NumCorr.Val - 1)
+                'Dim NumCor(NumCorr.Val - 1) As Integer
+                Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
+                Dim LabelCC(NumCorr.Val - 1, 10) As String
+                Dim TempCC(NumCorr.Val - 1, 10) As Double
+                TMSDCC = Int(0)
+                ' Resultados: Escribe en la hoja comparacion de correlaciones
+                Dim max As Integer = 0
+                For Indice = 0 To NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
+                    Dim ind As Boolean = True
+                    IndiceTmp = CStr(IndiceCorr(Indice))
+
+
+                    Dim TotalCorrs As Integer = DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp + "].COUNT")
+
+                    If TotalCorrs > max Then
+                        max = TotalCorrs
+                        ReDim Preserve LabelCC(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve ProfDesa(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve TVDCC(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve PresWf(NumCorr.Val - 1, max - 1)
+                        ReDim Preserve TempCC(NumCorr.Val - 1, max - 1)
+                    End If
+
+                    For J = 0 To TotalCorrs - 1 'Do Until (TMSDCC >= Math.Round(NivMedDisp.Val, 0)) ' For j = 1 To 100
+
+
+
+
+
+                        LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
+                        ' Profundidad desarrollada
+                        ProfDesa(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(J) & "]")
+                        ' Profundidad vertical
+                        TVDCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].TVD[" & CStr(J) & "]")
+                        ' Presion
+                        PresWf(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Pres[" & CStr(J) & "]")
+                        ' Temperatura
+                        TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
+
+
+                        TMSDCC = ProfDesa(Indice, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
+                        TMSDCC = Math.Round(TMSDCC, 0)
+                        NumDatCorr(Indice) = J
+                        'J = J + 1
+                        If (TMSDCC >= Math.Round(Prof_BEC.Val, 0) And ind = True) Then
+                            ' Presion en el intevalo medio productor
+                            PwfCC(Indice) = PresWf(Indice, J - 1)
+                            DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
+                            ind = False
+                        End If
+
+                        If TMSDCC >= Math.Round(Prof_BEC.Val, 0) Then
+                            Exit For
+                        End If
+                    Next
+                    NumCor(Indice) = Indice
+                    NomCorr(Indice) = NombrCorr(Indice)
+                    ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
+                    TMSDCC = 0
+                Next Indice
+                Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
+
+                'Se limpia la correlaciones
+                For i = 0 To NumCorr.Val - 1
+                    DoSet("PROSPER.ANL.VMT.Corr[" + i.ToString() + "]", 0)
+                Next i
+
+
+                ' Se seleccionan la correlaciones del mejor ajuste
+                DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                DoCmd("PROSPER.ANL.VMT.CALC")
+
+                'Se selecciona la correlación ya ajustada
+                For I = 0 To NumCorr.Val - 1 ' Solo hasta petroleum Expert 3
+                    DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 0)
+                Next I
+
+                DoSet("PROSPER.ANL.TCC.Corr[" & NumCor(0) & "]", 1)
+                DoCmd("PROSPER.ANL.TCC.CALC")
+
+                'VERIFICAR EN YACIMIENTO
+                'Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & IndiceCorr(NumCor(0)) & "].Pres[" + max.ToString() + "]")
+                'DoSet("PROSPER.SIN.IPR.Single.Ptest", Pwfcalc)
+
+
+                DoCmd("PROSPER.IPR.CALC")
+
+
+                '' Se des seleccionan todas las correlaciones en "VLP Maching - Adjust IPR"
+                For Indice = 0 To 23
+                    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(Indice) & "]", 0)
+                Next Indice
+
+                ' Se selecciona la mejor correlacion
+                DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
+                CorrVFP = NumCor(0)
+
+                'Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
+                DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0) + 1) & ",0)")
+                FlagTcc = DoGet("PROSPER.OUT.TCC.DONE")
+
+                Return True
+            Catch ex As Exception
+                Throw New Exception("TCC: " + ex.Message)
+            End Try
+        End Function
+
+        Private Function Compara_Correlaciones_BEC_() As Boolean
+
+
+            Try
+                ' Ajuste VLP/IPR. 
+                ' La sub rutina únicamente ajusta un solo juego de valores
+                ' por lo que sólo se usa: DATA[0]
+
+                Dim RATETYPE, ENABLE As Integer
+                Dim VLPLABEL As String = ""
+                Dim Htc As Double
+                Dim TCCMsd, TMSDCC As Double
+
+                ' Tipo de fluido producido -> 0: Liquido, 1: Aceite, 2: Gas.
+                RATETYPE = 0
+                ' Habilitar/Desabilitar los valores de DATA[i].
+                ENABLE = 0
+                ' Etiqueta
+                VLPLABEL = "Prof. Estabilizacion"
+                FlagTcc = DoGet("PROSPER.OUT.TCC.DONE")
+
+
+
+                DoSet("PROSPER.ANL.VMT.RATETYPE", RATETYPE)
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].ENABLE", ENABLE)
+                DoSet("PROSPER.ANL.VMT.Data[" & CStr(0) & "].label", VLPLABEL) ' "Prof. Estabilidad")
+
+                ' Presion en la cabeza del pozo (Pth)
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THPRES", THPres.Val)
+                ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THTEMP", THTemp.Val)
+                ' Corte de Agua. (Relación agua aceite WC)
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].WC", Wc.Val)
+                ' Produccion de liquido
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].RATE", QTest.Val)
+                ' Profundidad de medicion de la Pwf
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GDEPTH", Prof_BEC.Val)
+                ' Presion de fondo fluyendo a la profundad de la medición
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GPRES", PreDes_BEC.Val)
+                ' Presion de fondo estática (Pws) a la profundidad de la medición
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].PRES", PRes.Val)
+                ' Relación gas aceite
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GOR", GOR_PTy)
+                ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
+                DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GORFREE", GORFree)
+                'Freccuencia de operación 
+                DoSet("PROSPER.ANL.VMT.Data[0].Freq", Frec_BEC.Val)
+                'Factor de desgaste de la bomba
+                DoSet("PROSPER.ANL.VMT.Data[0].Wear", Desgaste_BEC.Val)
+                'Presión de succión de la bomba
+                DoSet("PROSPER.ANL.VMT.Data[0].PIP", PreSuc_BEC.Val)
+                'Presión de descarga de la bomba
+                DoSet("PROSPER.ANL.VMT.Data[0].PDP", PreDes_BEC.Val)
 
                 ' Se actualizan algunos cambios
                 DoCmd("PROSPER.Refresh")
                 ' Se procede a realizar el ajuste 
                 DoCmd("PROSPER.ANL.VMT.UVAL")
 
-                Htc = DoGet("Prosper.ANL.VMT.Data[" + TestIndex.ToString() + "].Uvalue")
+                Htc = DoGet("Prosper.ANL.VMT.Data[" & CStr(0) & "].Uvalue")
 
                 DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
 
-
-                'COMPARACION DE CORRELACIONES
-                '====================================================================================
                 ' Comparación de correlaciones
                 ' Presión en la cabeza del pozo (Pth)
                 DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
@@ -4046,8 +4193,8 @@ Public Class Crea
                 ' 15      OLGAS3P
                 ' 16      OLGAS3PEXT
 
-                For I = 0 To NumCorr.Val - 1  ' Solo hasta petroleum Expert 3
-                    DoSet("PROSPER.ANL.TCC.Corr[" + I.ToString() + "]", 1)
+                For I = 0 To 9 ' Solo hasta petroleum Expert 3
+                    DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 1)
                 Next I
 
                 ''NUEVO MARDOQUEO
@@ -4059,18 +4206,36 @@ Public Class Crea
                 ''TERMINA NUEVO MARDOQUEO
 
                 ' Datos medidos
-                DoSet("PROSPER.ANL.TCC.Comp[0].Msd", TCCMsd)
-                DoSet("PROSPER.ANL.TCC.Comp[1].Msd", Prof_BEC.Val)
-                DoSet("PROSPER.ANL.TCC.Comp[0].Prs", THPres.Val)
-                DoSet("PROSPER.ANL.TCC.Comp[1].Prs", PreDes_BEC.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
+                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", Prof_BEC.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
+                DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", PreDes_BEC.Val)
 
                 'For i = 0 To 9
                 '    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(i) & "]", 1)
                 'Next i
 
-                DoCmd("PROSPER.ANL.TCC.CALC")
+                'DoCmd("PROSPER.ANL.TCC.CALC")
 
+                For i = 0 To 9
+                    DoSet("PROSPER.ANL.VMT.Corr[" & i & "]", 1)
+                Next i
+                DoCmd("PROSPER.ANL.VMT.CALC")
 
+                ' Resultados de Comparación de Correlaciones 
+                '
+                'Dim Indice, J As Integer
+                'Dim IndiceTmp As String
+                ''ReDim NumCor(NumCorr.Val - 1)
+                ''ReDim ProfDesa(,)
+                ''ReDim TVDCC(NumCorr.Val - 1, 100)
+                ''ReDim PresWf(NumCorr.Val - 1, 100)
+                'ReDim NumDatCorr(NumCorr.Val - 1)
+                'ReDim NomCorr(NumCorr.Val - 1)
+                'ReDim NumCor(NumCorr.Val - 1)
+                'Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
+                'Dim LabelCC(,) As String
+                'Dim TempCC(,) As Double
 
                 Dim Indice, J As Integer
                 Dim IndiceTmp As String
@@ -4084,28 +4249,26 @@ Public Class Crea
                 Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
                 Dim LabelCC(NumCorr.Val - 1, 10) As String
                 Dim TempCC(NumCorr.Val - 1, 10) As Double
+
                 TMSDCC = Int(0)
                 ' Resultados: Escribe en la hoja comparacion de correlaciones
                 Dim max As Integer = 0
                 For Indice = 0 To NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
                     Dim ind As Boolean = True
                     IndiceTmp = CStr(IndiceCorr(Indice))
+                    J = 0
 
 
-                    Dim TotalCorrs As Integer = Integer.Parse(DoGet("PROSPER.OUT.TCC.Results[" + IndiceTmp + "].COUNT"))
+                    Do Until (TMSDCC >= Math.Round(NivMedDisp.Val, 0)) ' For j = 1 To 100
 
-                    If TotalCorrs > max Then
-                        max = TotalCorrs
-                        ReDim Preserve LabelCC(NumCorr.Val - 1, max - 1)
-                        ReDim Preserve ProfDesa(NumCorr.Val - 1, max - 1)
-                        ReDim Preserve TVDCC(NumCorr.Val - 1, max - 1)
-                        ReDim Preserve PresWf(NumCorr.Val - 1, max - 1)
-                        ReDim Preserve TempCC(NumCorr.Val - 1, max - 1)
-                    End If
-
-                    For J = 0 To TotalCorrs - 1 'Do Until (TMSDCC >= Math.Round(NivMedDisp.Val, 0)) ' For j = 1 To 100
-
-
+                        If J > max Then
+                            max = J
+                            ReDim Preserve LabelCC(NumCorr.Val - 1, J)
+                            ReDim Preserve ProfDesa(NumCorr.Val - 1, J)
+                            ReDim Preserve TVDCC(NumCorr.Val - 1, J)
+                            ReDim Preserve PresWf(NumCorr.Val - 1, J)
+                            ReDim Preserve TempCC(NumCorr.Val - 1, J)
+                        End If
 
 
 
@@ -4130,32 +4293,31 @@ Public Class Crea
                             DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
                             ind = False
                         End If
-                    Next
+                    Loop
                     NumCor(Indice) = Indice
                     NomCorr(Indice) = NombrCorr(Indice)
                     ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
                     TMSDCC = 0
                 Next Indice
+
                 Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
 
                 'Se limpia la correlaciones
-                For i = 0 To NumCorr.Val - 1
-                    DoSet("PROSPER.ANL.VMT.Corr[" + i.ToString() + "]", 0)
+                For i = 0 To 9
+                    DoSet("PROSPER.ANL.VMT.Corr[" & i & "]", 0)
                 Next i
-
-
                 ' Se seleccionan la correlaciones del mejor ajuste
                 DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
                 DoCmd("PROSPER.ANL.VMT.CALC")
 
                 'Se selecciona la correlación ya ajustada
-                For I = 0 To NumCorr.Val - 1 ' Solo hasta petroleum Expert 3
+                For I = 0 To 9 ' Solo hasta petroleum Expert 3
                     DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 0)
                 Next I
 
                 DoSet("PROSPER.ANL.TCC.Corr[" & NumCor(0) & "]", 1)
                 DoCmd("PROSPER.ANL.TCC.CALC")
-                Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & IndiceCorr(NumCor(0)) & "].Pres[" + max.ToString() + "]")
+                Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & IndiceCorr(NumCor(0)) & "].Pres[160]") 'tENIA 160
                 DoSet("PROSPER.SIN.IPR.Single.Ptest", Pwfcalc)
                 DoCmd("PROSPER.IPR.CALC")
 
@@ -4171,279 +4333,6 @@ Public Class Crea
 
                 'Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
                 DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0) + 1) & ",0)")
-                FlagTcc = DoGet("PROSPER.OUT.TCC.DONE")
-                Return True
-            Catch ex As Exception
-                Throw New Exception("TCC: " + ex.Message)
-            End Try
-        End Function
-
-        Private Function Compara_Correlaciones_BEC_() As Boolean
-
-
-            Try
-                ' Ajuste VLP/IPR. 
-                ' La sub rutina únicamente ajusta un solo juego de valores
-                ' por lo que sólo se usa: DATA[0]
-
-                Dim RATETYPE, ENABLE As Integer
-                Dim VLPLABEL As String = ""
-                Dim Htc As Double
-                Dim TCCMsd, TMSDCC As Double
-
-                ' Tipo de fluido producido -> 0: Liquido, 1: Aceite, 2: Gas.
-                RATETYPE = 0
-                ' Habilitar/Desabilitar los valores de DATA[i].
-                ENABLE = 0
-                ' Etiqueta
-                VLPLABEL = "Prof. Estabilizacion"
-                FlagTcc = DoGet("PROSPER.OUT.TCC.DONE")
-
-
-
-                DoSet("PROSPER.ANL.VMT.RATETYPE", RATETYPE)
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].ENABLE", ENABLE)
-                    DoSet("PROSPER.ANL.VMT.Data[" & CStr(0) & "].label", VLPLABEL) ' "Prof. Estabilidad")
-
-                    ' Presion en la cabeza del pozo (Pth)
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THPRES", THPres.Val)
-                    ' Temperatura en la cabeza del pozo Fluyendo (Thp) 
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].THTEMP", THTemp.Val)
-                    ' Corte de Agua. (Relación agua aceite WC)
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].WC", Wc.Val)
-                    ' Produccion de liquido
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].RATE", QTest.Val)
-                    ' Profundidad de medicion de la Pwf
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GDEPTH", Prof_BEC.Val)
-                    ' Presion de fondo fluyendo a la profundad de la medición
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GPRES", PreDes_BEC.Val)
-                    ' Presion de fondo estática (Pws) a la profundidad de la medición
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].PRES", PRes.Val)
-                    ' Relación gas aceite
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GOR", GOR_PTy)
-                    ' Relacion gas libre aceite (solo si se tiene conificacion de gas)
-                    DoSet("PROSPER.ANL.VMT.DATA[" & CStr(0) & "].GORFREE", GORFree)
-                    'Freccuencia de operación 
-                    DoSet("PROSPER.ANL.VMT.Data[0].Freq", Frec_BEC.Val)
-                    'Factor de desgaste de la bomba
-                    DoSet("PROSPER.ANL.VMT.Data[0].Wear", Desgaste_BEC.Val)
-                    'Presión de succión de la bomba
-                    DoSet("PROSPER.ANL.VMT.Data[0].PIP", PreSuc_BEC.Val)
-                    'Presión de descarga de la bomba
-                    DoSet("PROSPER.ANL.VMT.Data[0].PDP", PreDes_BEC.Val)
-
-                    ' Se actualizan algunos cambios
-                    DoCmd("PROSPER.Refresh")
-                    ' Se procede a realizar el ajuste 
-                    DoCmd("PROSPER.ANL.VMT.UVAL")
-
-                    Htc = DoGet("Prosper.ANL.VMT.Data[" & CStr(0) & "].Uvalue")
-
-                    DoSet("PROSPER.SIN.EQP.Geo.Htc", Htc)
-
-                    ' Comparación de correlaciones
-                    ' Presión en la cabeza del pozo (Pth)
-                    DoSet("PROSPER.ANL.TCC.Pres", THPres.Val)
-                    ' Corte de Agua. (Relación agua aceite WC)
-                    DoSet("PROSPER.ANL.TCC.WC", Wc.Val)
-                    ' Producción de liquido
-                    DoSet("PROSPER.ANL.TCC.Rate", QTest.Val)
-                    ' Relación gas aceite
-                    DoSet("PROSPER.ANL.TCC.GOR ", GOR_PTy)
-                    ' Relación gas libre aceite (sólo si se tiene conificacion de gas)
-                    DoSet("PROSPER.ANL.TCC.GORFree", GORFree)
-
-                    ' Tipo de producción
-                    ' 0 : Producción de liquido
-                    ' 1 : Producción de aceite
-                    DoSet("PROSPER.ANL.TCC.RateType", 0)
-
-                    '
-                    ' Correlación de la linea de descarga
-                    '
-                    ' 2  FancherBrown
-                    ' 4  MukerjeeBrill
-                    ' 5  BeggsandBrill
-                    ' 6  DuklerFlannigan
-                    ' 7  DuklerEatonFlannigan
-                    ' 13 BeggsandBrillGasHead
-                    ' 14 GREmodifiedbyPE
-                    ' 15 GREwithDSM
-                    ' 16 GREoriginal
-                    ' 17 GREwithAE
-                    ' 18 PetroleumExperts4
-                    ' 19 Hydro3P
-                    ' 20 PetroleumExperts5
-                    ' 21 OLGAS2P
-                    ' 22 OLGAS3P
-                    ' 23 OLGAS3PEXT
-                    '
-                    DoSet("PROSPER.ANL.TCC.Pipe", 5)
-
-                    ' EMR del estadomecánico
-                    TCCMsd = 0
-
-                    ' Datos medidos
-                    'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
-                    'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", Prof_BEC.Val)
-                    'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
-                    'DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", Ptest.Val)
-
-                    ' Use the following list to to determine the value of corrname to select the correlation by name
-                    '
-                    ' 0       PROSPER.ANL.VMT.Data[0].PIP
-                    ' 1       HagedornBrown
-                    ' 2       FancherBrown
-                    ' 3       MukerjeeBrill
-                    ' 4       BeggsandBrill
-                    ' 5       PetroleumExperts
-                    ' 6       Orkiszewski
-                    ' 7       PetroleumExperts2
-                    ' 8       DunsandRosOriginal
-                    ' 9       PetroleumExperts3
-                    ' 10      GREmodifiedbyPE
-                    ' 11      PetroleumExperts4
-                    ' 12      Hydro3P
-                    ' 13      PetroleumExperts5
-                    ' 14      OLGAS2P
-                    ' 15      OLGAS3P
-                    ' 16      OLGAS3PEXT
-
-                    For I = 0 To 9 ' Solo hasta petroleum Expert 3
-                        DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 1)
-                    Next I
-
-                    ''NUEVO MARDOQUEO
-                    'DoSet("PROSPER.ANL.TCC.Corr[" & NumCor(0) & "]", 1)
-                    'DoCmd("PROSPER.ANL.TCC.CALC")
-                    'Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & NumCor(0) & "].Pres[160]")
-                    'DoSet("PROSPER.SIN.IPR.Single.Ptest", Pwfcalc)
-                    'DoCmd("PROSPER.IPR.CALC")
-                    ''TERMINA NUEVO MARDOQUEO
-
-                    ' Datos medidos
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Msd", TCCMsd)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Msd", Prof_BEC.Val)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(0) & "].Prs", THPres.Val)
-                    DoSet("PROSPER.ANL.TCC.Comp[" & CStr(1) & "].Prs", PreDes_BEC.Val)
-
-                    'For i = 0 To 9
-                    '    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(i) & "]", 1)
-                    'Next i
-
-                    DoCmd("PROSPER.ANL.TCC.CALC")
-
-                    ' Resultados de Comparación de Correlaciones 
-                    '
-                    'Dim Indice, J As Integer
-                    'Dim IndiceTmp As String
-                    ''ReDim NumCor(NumCorr.Val - 1)
-                    ''ReDim ProfDesa(,)
-                    ''ReDim TVDCC(NumCorr.Val - 1, 100)
-                    ''ReDim PresWf(NumCorr.Val - 1, 100)
-                    'ReDim NumDatCorr(NumCorr.Val - 1)
-                    'ReDim NomCorr(NumCorr.Val - 1)
-                    'ReDim NumCor(NumCorr.Val - 1)
-                    'Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
-                    'Dim LabelCC(,) As String
-                    'Dim TempCC(,) As Double
-
-                    Dim Indice, J As Integer
-                    Dim IndiceTmp As String
-                    ReDim NumCor(NumCorr.Val - 1)
-                    ReDim ProfDesa(NumCorr.Val - 1, 10)
-                    ReDim TVDCC(NumCorr.Val - 1, 10)
-                    ReDim PresWf(NumCorr.Val - 1, 10)
-                    ReDim NumDatCorr(NumCorr.Val - 1)
-                    ReDim NomCorr(NumCorr.Val - 1)
-                    'Dim NumCor(NumCorr.Val - 1) As Integer
-                    Dim PwfCC(NumCorr.Val - 1), DifPwf(NumCorr.Val) As Double
-                    Dim LabelCC(NumCorr.Val - 1, 10) As String
-                    Dim TempCC(NumCorr.Val - 1, 10) As Double
-
-                    TMSDCC = Int(0)
-                    ' Resultados: Escribe en la hoja comparacion de correlaciones
-                    Dim max As Integer = 0
-                    For Indice = 0 To NumCorr.Val - 1 ' Correlacones a seleccionar (comienzan desde el cero)
-                        Dim ind As Boolean = True
-                        IndiceTmp = CStr(IndiceCorr(Indice))
-                        J = 0
-
-
-                        Do Until (TMSDCC >= Math.Round(NivMedDisp.Val, 0)) ' For j = 1 To 100
-
-                            If J > max Then
-                                max = J
-                                ReDim Preserve LabelCC(NumCorr.Val - 1, J)
-                                ReDim Preserve ProfDesa(NumCorr.Val - 1, J)
-                                ReDim Preserve TVDCC(NumCorr.Val - 1, J)
-                                ReDim Preserve PresWf(NumCorr.Val - 1, J)
-                                ReDim Preserve TempCC(NumCorr.Val - 1, J)
-                            End If
-
-
-
-                            LabelCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Label[" & CStr(J) & "]")
-                            ' Profundidad desarrollada
-                            ProfDesa(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(J) & "]")
-                            ' Profundidad vertical
-                            TVDCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].TVD[" & CStr(J) & "]")
-                            ' Presion
-                            PresWf(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Pres[" & CStr(J) & "]")
-                            ' Temperatura
-                            TempCC(Indice, J) = DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].Temp[" & CStr(J) & "]")
-
-
-                            TMSDCC = ProfDesa(Indice, J) 'DoGet("PROSPER.OUT.TCC.Results[" & IndiceTmp & "].MSD[" & CStr(j - 1) & "]")
-                            TMSDCC = Math.Round(TMSDCC, 0)
-                            NumDatCorr(Indice) = J
-                            J = J + 1
-                            If (TMSDCC >= Math.Round(Prof_BEC.Val, 0) And ind = True) Then
-                                ' Presion en el intevalo medio productor
-                                PwfCC(Indice) = PresWf(Indice, J - 1)
-                                DifPwf(Indice) = Math.Abs(Ptest.Val - PwfCC(Indice))
-                                ind = False
-                            End If
-                        Loop
-                        NumCor(Indice) = Indice
-                        NomCorr(Indice) = NombrCorr(Indice)
-                        ' IPR = Qtest / (14.223 * DifPwf(Indice))  ' IPR (bl/día) / (lb/pg2)
-                        TMSDCC = 0
-                    Next Indice
-
-                    Call SortBubble(NumCorr.Val, NumCor, NomCorr, DifPwf, 3, True)
-
-                    'Se limpia la correlaciones
-                    For i = 0 To 9
-                        DoSet("PROSPER.ANL.VMT.Corr[" & i & "]", 0)
-                    Next i
-                    ' Se seleccionan la correlaciones del mejor ajuste
-                    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
-                    DoCmd("PROSPER.ANL.VMT.CALC")
-
-                    'Se selecciona la correlación ya ajustada
-                    For I = 0 To 9 ' Solo hasta petroleum Expert 3
-                        DoSet("PROSPER.ANL.TCC.Corr[" & CStr(I) & "]", 0)
-                    Next I
-
-                    DoSet("PROSPER.ANL.TCC.Corr[" & NumCor(0) & "]", 1)
-                    DoCmd("PROSPER.ANL.TCC.CALC")
-                Dim Pwfcalc As Double = DoGet("PROSPER.OUT.TCC.Results[" & IndiceCorr(NumCor(0)) & "].Pres[160]") 'tENIA 160
-                DoSet("PROSPER.SIN.IPR.Single.Ptest", Pwfcalc)
-                    DoCmd("PROSPER.IPR.CALC")
-
-
-                    '' Se des seleccionan todas las correlaciones en "VLP Maching - Adjust IPR"
-                    For Indice = 0 To 23
-                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(Indice) & "]", 0)
-                    Next Indice
-
-                    ' Se selecciona la mejor correlacion
-                    DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
-                    CorrVFP = NumCor(0)
-
-                    'Dim NombreCorrelacion As String = DoGet("PROSPER.ANL.VMT.Corrlabel[1],[1]")
-                    DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(NumCor(0) + 1) & ",0)")
                 'DoCmd("PROSPER.ANL.VMT.VLPIPR(1,0)")
 
 
@@ -4467,72 +4356,45 @@ Public Class Crea
                 Dim ValAux As Double = 0
                 ReDim VLPIPR_RTEL(1, 19)
                 ReDim VLPIPR_PWF(1, 19)
-
-                Dim version = Settings.GetBy("prosper_version")
                 Dim Ptest As Double = 0
 
+                DoSet("PROSPER.ANL.VMT.Corr[" + NumCor(0).ToString() + "]", 1)
+                ' DoSet("PROSPER.ANL.VMT.Corr[8]", 1)
+                'DoCmd("PROSPER.ANL.VMT.CALC")
 
-                If version = "IPM 7.5" Then
-                    'V7.5
-                    If Equipment = False Then DoCmd("PROSPER.ANL.VMT.VLPIPR")
+                If Version = "IPM 7.5" Then
+                    DoCmd("PROSPER.ANL.VMT.VLPIPR(" + CorrIndex.ToString() + "," + TestIndex.ToString() + ")")
+                Else
+                    DoCmd("PROSPER.ANL.VMT.VLPIPR(" + (CorrIndex + 1).ToString() + "," + (TestIndex + 1).ToString() + ")")
+                End If
 
-                    For I = 0 To 19
-                        ' QL bl / dia
-                        ValAux = DoGet("PROSPER.OUT.VIM.Results[0].Rate[0][" + I.ToString() + "]")
+
+                For I = 0 To 19
+                    ' QL bl / dia
+                    If Version = "IPM 7.5" Then
+                        'PROSPER.OUT.VIM.Results[0].Rate[0][0]
+                        DoCmd("PROSPER.ANL.VMT.VLPIPR")
+                        ValAux = DoGet("PROSPER.OUT.VIM.Results[0].Rate[" + TestIndex.ToString() + "][" + I.ToString() + "]")
                         VLPIPR_RTEL(0, I) = ValAux : VLPIPR_RTEL(1, I) = ValAux
                         ' Qo bl / dia
                         ' Pwf kg/cm2  VLP -> Tubería
-                        VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Results[0].VLPPres[0][" & CStr(I) & "]")
+                        VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Results[0].VLPPres[" + TestIndex.ToString() + "][" & CStr(I) & "]") / 14.22
                         ' Pwf kg/cm2  IPR Yacimiento
-                        VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Results[0].IPRPres[0][" & CStr(I) & "]")
-
-                    Next I
-                Else
-                    'V11
-                    If Equipment Then
-                        'PROSPER.ANL.VMT.VLPIPR(12,4)
-                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
-                        DoCmd("PROSPER.ANL.VMT.CALC")
-                        DoCmd("PROSPER.ANL.VMT.VLPIPR(" + (CorrIndex + 1).ToString() + "," + (TestIndex + 1).ToString() + ")")
-                        'PROSPER.OUT.VIM.Correlations[11].Test[3].OilRate[5]
-                        For I = 0 To 19
-                            ' QL bl / dia
-                            Dim qwater As Double = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].WatRate[" & CStr(I) & "]")
-                            ValAux = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].OilRate[" & CStr(I) & "]") + qwater
-                            VLPIPR_RTEL(0, I) = ValAux : VLPIPR_RTEL(1, I) = ValAux
-                            ' Qo bl / dia
-                            ' Pwf kg/cm2  VLP -> Tubería
-                            VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].VLPpres[" & CStr(I) & "]") / 14.22
-                            ' Pwf kg/cm2  IPR Yacimiento
-                            VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].IPRpres[" & CStr(I) & "]") / 14.22
-                        Next I
+                        VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Results[0].IPRPres[" + TestIndex.ToString() + "][" & CStr(I) & "]") / 14.22
 
                     Else
-                        ' Se seleccionan la correlaciones del mejor ajuste
-                        DoSet("PROSPER.ANL.VMT.Corr[" & CStr(NumCor(0)) & "]", 1)
-                        DoCmd("PROSPER.ANL.VMT.CALC")
-                        DoCmd("PROSPER.ANL.VMT.VLPIPR(" & CStr(CorrIndex + 1) & ",1)")
-
-                        For I = 0 To 19
-                            ' QL bl / dia
-                            Dim qwater As Double = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].WatRate[" & CStr(I) & "]")
-                            ValAux = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].OilRate[" & CStr(I) & "]") + qwater
-                            VLPIPR_RTEL(0, I) = ValAux : VLPIPR_RTEL(1, I) = ValAux
-                            ' Qo bl / dia
-                            ' Pwf kg/cm2  VLP -> Tubería
-                            VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].VLPpres[" & CStr(I) & "]") / 14.22
-                            ' Pwf kg/cm2  IPR Yacimiento
-                            VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Correlations[" & CStr(NumCor(0)) & "].Test[0].IPRpres[" & CStr(I) & "]") / 14.22
-                        Next I
-
-
-
+                        Dim qwater As Double = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].WatRate[" & CStr(I) & "]")
+                        ValAux = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].OilRate[" & CStr(I) & "]") + qwater
+                        VLPIPR_RTEL(0, I) = ValAux : VLPIPR_RTEL(1, I) = ValAux
+                        ' Qo bl / dia
+                        ' Pwf kg/cm2  VLP -> Tubería
+                        VLPIPR_PWF(0, I) = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].VLPpres[" & CStr(I) & "]") / 14.22
+                        ' Pwf kg/cm2  IPR Yacimiento
+                        VLPIPR_PWF(1, I) = DoGet("PROSPER.OUT.VIM.Correlations[" + CorrIndex.ToString() + "].Test[" + TestIndex.ToString() + "].IPRpres[" & CStr(I) & "]") / 14.22
                     End If
 
 
-
-
-                End If
+                Next I
 
                 'REVISAR SI ESTA DE MAS ESTA FUNCION
                 'Ptest = DoGet("PROSPER.OUT.VIM.Results[0].TestPres[0]")
@@ -4574,54 +4436,54 @@ Public Class Crea
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Private Function Sensibilidad_BN() As Boolean
             Try
-                If Equipment Then
+                'If Equipment Then
 
 
-                    Dim WcVec(9) As Double
-                    ReDim QliqVLP(9, 19)
-                    ReDim PwfVLP(9, 19)
-                    ReDim QgiVec(9)
-                    ReDim QliqVec(9)
+                '    Dim WcVec(9) As Double
+                '    ReDim QliqVLP(9, 19)
+                '    ReDim PwfVLP(9, 19)
+                '    ReDim QgiVec(9)
+                '    ReDim QliqVec(9)
 
-                    ResultSystemVar({"LiqRate"})
+                '    ResultSystemVar({"LiqRate"})
 
-                    If LiqRate.Count() > 0 Then
-                        For j = 0 To LiqRate.Count() - 1
-                            QliqVec(j) = DoGet("PROSPER.OUT.SYS.Results[" & j & "].Sol.LiqRate")
-                        Next j
-                        For i = 0 To LiqRate.Count() - 1
-                            For j = 0 To 19
-                                QliqVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "].LiqRate[" & j & "]")
-                                PwfVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "].VLPpres[" & j & "]")
-                            Next j
-                        Next i
-                    End If
+                '    If LiqRate.Count() > 0 Then
+                '        For j = 0 To LiqRate.Count() - 1
+                '            QliqVec(j) = DoGet("PROSPER.OUT.SYS.Results[" & j & "].Sol.LiqRate")
+                '        Next j
+                '        For i = 0 To LiqRate.Count() - 1
+                '            For j = 0 To 19
+                '                QliqVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "].LiqRate[" & j & "]")
+                '                PwfVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "].VLPpres[" & j & "]")
+                '            Next j
+                '        Next i
+                '    End If
 
-                    'Extraccion QGIMIN y QGIMAX
-                    If SensVarsVal.Keys.Contains(138) Then
-                        For i = 0 To SensVarsVal(138).Count - 1
-                            QgiVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & i & "]")
-                        Next i
+                '    'Extraccion QGIMIN y QGIMAX
+                '    If SensVarsVal.Keys.Contains(138) Then
+                '        For i = 0 To SensVarsVal(138).Count - 1
+                '            QgiVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & i & "]")
+                '        Next i
 
-                        QgiMin.Val = SensVarsVal(138)(0)
-                        QgiMax.Val = SensVarsVal(138)(SensVarsVal(138).Count - 1)
+                '        QgiMin.Val = SensVarsVal(138)(0)
+                '        QgiMax.Val = SensVarsVal(138)(SensVarsVal(138).Count - 1)
 
-                    End If
-
-
+                '    End If
 
 
 
-                Else
 
 
-                    ' Curva del comportamiento del gas de BN
+                'Else
 
-                    ' Analisis de Sensibilidad para el gas de Inyección
-                    ' Empleando el modulo -> System 3 Variables
 
-                    ' Presión en la cabeza del pozo (Pth)
-                    DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
+                ' Curva del comportamiento del gas de BN
+
+                ' Analisis de Sensibilidad para el gas de Inyección
+                ' Empleando el modulo -> System 3 Variables
+
+                ' Presión en la cabeza del pozo (Pth)
+                DoSet("PROSPER.ANL.SYS.Pres", THPres.Val)
                     ' Corte de Agua. (Relación agua aceite WC)
                     DoSet("PROSPER.ANL.SYS.WC", Wc.Val)
                     ' Relación gas aceite total
@@ -4742,8 +4604,8 @@ Public Class Crea
 
 
 
-                    'ResultSystemVar({"LiqRate", "VLPpres"})
-                End If
+                'ResultSystemVar({"LiqRate", "VLPpres"})
+                'End If
                 Return True
             Catch ex As Exception
                 Throw New Exception("Sensibilidad BN:" + ex.Message)
@@ -4908,9 +4770,14 @@ Public Class Crea
                 '******************************************************
                 DoSet("PROSPER.ANL.SYS.Sens.SensDB.Clear", "")
                 DoCmd("PROSPER.ANL.SYS.CALC")
+                If Version = "IPM 7.5" Then
+                    PumpRate.Val = DoGet("PROSPER.OUT.SYS.Results[0][0][0].Sol.PumpAvRate")
+                    PumpHead.Val = DoGet("PROSPER.OUT.SYS.Results[0][0][0].Sol.PumpHead")
+                Else
+                    PumpRate.Val = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
+                    PumpHead.Val = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead")
+                End If
 
-                PumpRate.Val = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
-                PumpHead.Val = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead")
                 'Termina 22/octubre/2019
 
 
@@ -4984,16 +4851,45 @@ Public Class Crea
                 ' Se realizan los calculos
                 DoCmd("PROSPER.ANL.SYS.CALC")
 
-                For j = 0 To 9
-                    QliqVec(j) = DoGet("PROSPER.OUT.SYS.Results[" & j & "][0][0].Sol.LiqRate")
-                Next j
-                For i = 0 To 9
-                    For j = 0 To 19
-                        QliqVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].LiqRate[" & j & "]")
-                        PwfVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].VLPpres[" & j & "]")
-                        Pdescarga_BEC(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].PDP[" & j & "]")
+                'Parametros de recorrido
+                '===================================================================================================================
+                Dim var1 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[148].Vals.COUNT")
+                Dim var2 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals.COUNT") 'Corte de 
+                Dim var3 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals.COUNT") 'Presion en el yacimiento
+
+                For i = 0 To var1 - 1
+                    QliqVec(i) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].Sol.LiqRate")
+                    For j = 0 To var2 - 1
+                        For k = 0 To var3 - 1
+
+                            Dim Results As Integer = 0
+
+                            If Version = "IPM 7.5" Then
+                                Results = 18
+                            Else
+                                Results = 20
+                            End If
+
+                            For l = 0 To Results - 1
+
+                                QliqVLP(i, l) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][" + j.ToString() + "][" + k.ToString() + "].LiqRate[" + l.ToString() + "]")
+                                PwfVLP(i, l) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][" + j.ToString() + "][" + k.ToString() + "].VLPpres[" + l.ToString() + "]")
+                                Pdescarga_BEC(i, l) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][" + j.ToString() + "][" + k.ToString() + "].PDP[" + l.ToString() + "]")
+                            Next l
+
+                        Next k
+
                     Next j
+
+
                 Next i
+                'For i = 0 To 9
+                '    For j = 0 To 19
+                '        QliqVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].LiqRate[" & j & "]")
+                '        PwfVLP(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].VLPpres[" & j & "]")
+                '        Pdescarga_BEC(i, j) = DoGet("PROSPER.OUT.SYS.Results[" & i & "][0][0].PDP[" & j & "]")
+                '    Next j
+                'Next i
 
                 Return True
             Catch ex As Exception
@@ -5035,15 +4931,25 @@ Public Class Crea
                 ' 23      OLGAS3PEXT
 
                 ' Correlación de flujo mulfifásico Vertical
-                FlagQuickLook = DoGet("PROSPER.OUT.QLG.DONE")
 
-                If FlagQuickLook = 0 Then
-                    ' DiamValBNC.Val = DoGet("PROSPER.ANL.QLG.Gaslift[0]")
 
-                    'TRPres.Val = DoGet("PROSPER.ANL.QLG.Surface[6][0]")
 
-                    ' Else
-                    DoSet("PROSPER.ANL.QLG.Surface[0][0]", THPres.Val)
+                ' DiamValBNC.Val = DoGet("PROSPER.ANL.QLG.Gaslift[0]")
+
+                'TRPres.Val = DoGet("PROSPER.ANL.QLG.Surface[6][0]")
+
+                ' Else
+
+
+                If Equipment Then
+                    TRPres.Val = DoGet("PROSPER.ANL.QLG.Surface[6][0]")
+                    If Version = "IPM 7.5" Then DiamValBNC.Val = DoGet("PROSPER.ANL.QLG.Gaslift[0]")
+                Else
+                    DoSet("PROSPER.ANL.QLG.Surface[6][0]", TRPres.Val)
+                    DoSet("PROSPER.ANL.QLG.Gaslift[0]", DiamValBNC.Val)
+                End If
+
+                DoSet("PROSPER.ANL.QLG.Surface[0][0]", THPres.Val)
 
                     DoSet("PROSPER.ANL.QLG.Surface[1][0]", THTemp.Val)
 
@@ -5055,11 +4961,11 @@ Public Class Crea
 
                     DoSet("PROSPER.ANL.QLG.Surface[5][0]", GLRate.Val)
 
-                    DoSet("PROSPER.ANL.QLG.Surface[6][0]", TRPres.Val)
 
-                    DoSet("PROSPER.ANL.QLG.Gaslift[0]", DiamValBNC.Val)
 
-                    DoSet("PROSPER.ANL.QLG.Gaslift[1]", ValveDepth.Val)
+                DoSet("PROSPER.ANL.QLG.Gaslift[0]", DiamValBNC.Val)
+
+                DoSet("PROSPER.ANL.QLG.Gaslift[1]", ValveDepth.Val)
 
                     DoSet("PROSPER.ANL.QLG.Tubing", 1)
 
@@ -5067,18 +4973,18 @@ Public Class Crea
 
                     ' Se realizan los calculos
                     DoCmd("PROSPER.ANL.QLG.CALC")
-                    ' FlagQuickLook = 1
-                    SaveFile = True
 
-                    FlagQuickLook = DoGet("PROSPER.OUT.QLG.DONE")
-                End If
+                'SaveFile = True
 
+                FlagQuickLook = DoGet("PROSPER.OUT.QLG.DONE")
 
 
-                '
-                ' Se obtienen los resultados del Quick Look
-                '
-                Dim Pwf_QL, TempValv, RGAQL, GORLibr, DPValv, PtrTeor As Double
+
+
+                    '
+                    ' Se obtienen los resultados del Quick Look
+                    '
+                    Dim Pwf_QL, TempValv, RGAQL, GORLibr, DPValv, PtrTeor As Double
                 Dim DPYacim, IPQL, QgiCrit, PorQgiCrit, CoefTransfAjus As Double
                 Dim Ok As Integer
 
@@ -5171,9 +5077,10 @@ Public Class Crea
 
                     Indice = 0
                     TMSDGG = 0
+                    'REVISAR URGENTEMENTE CAMBIO A FOREACH CON VALIDACIOND DE TERMINACION DE LA ITERACION 
 
-                    Do Until (TMSDGG >= NivMedDisp.Val - 0.1)
-                        ' Profundidad desarrollada
+                    Dim CountGasGrad As Integer = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad.COUNT")
+                    For Indice = 0 To CountGasGrad - 1
                         MSDGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].MSD")
                         'Sheets(HojaQL).Cells(Reng + Indice, ColGG) = MSDGG(Indice)
                         ' Profundidad Vertical
@@ -5183,22 +5090,45 @@ Public Class Crea
                         PresGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].Pres")
                         'Sheets(HojaQL).Cells(Reng + Indice, ColGG + 2) = PresGG(Indice)
                         TMSDGG = MSDGG(Indice)
-                        Indice = Indice + 1
-                    Loop
+
+                        If TMSDGG >= NivMedDisp.Val - 0.1 Then
+                            Exit For
+                        End If
+                    Next
+
+
+                    'Do Until (TMSDGG >= NivMedDisp.Val - 0.1)
+                    '    ' Profundidad desarrollada
+                    '    MSDGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].MSD")
+                    '    'Sheets(HojaQL).Cells(Reng + Indice, ColGG) = MSDGG(Indice)
+                    '    ' Profundidad Vertical
+                    '    TVDGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].TVD")
+                    '    'Sheets(HojaQL).Cells(Reng + Indice, ColGG + 1) = TVDGG(Indice)
+                    '    ' Presion
+                    '    PresGG(Indice) = DoGet("PROSPER.OUT.QLG.Results[0].GasGrad[" & CStr(Indice) & "].Pres")
+                    '    'Sheets(HojaQL).Cells(Reng + Indice, ColGG + 2) = PresGG(Indice)
+                    '    TMSDGG = MSDGG(Indice)
+                    '    Indice = Indice + 1
+                    'Loop
 
                     NumDatGG = Indice - 1
 
                     ' Gradiente teorico
                     Dim GGTVD1, GGTVD2 As Double
 
-                    GGTVD1 = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].TVD")
-                    GGTVD2 = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].TVD")
+                    CountGasGrad = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad.COUNT")
 
-                    GGTVD(0) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].TVD")
-                    GGTVD(1) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].TVD")
+                    If CountGasGrad > 0 Then
+                        GGTVD1 = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].TVD")
+                        GGTVD2 = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].TVD")
 
-                    GGPres(0) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].Pres")
-                    GGPres(1) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].Pres")
+                        GGTVD(0) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].TVD")
+                        GGTVD(1) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].TVD")
+
+                        GGPres(0) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[0].Pres")
+                        GGPres(1) = DoGet("PROSPER.OUT.QLG.Results[1].GasGrad[1].Pres")
+                    End If
+
                 End If
                 Return True
             Catch ex As Exception
@@ -5284,7 +5214,8 @@ Public Class Crea
                 'Facción de gas libre que entra en la bomba
                 FgasinBomba_BECq = DoGet("PROSPER.OUT.QLE.Output[7]")
                 'Cosumo de corriente
-                KVA_BECq = DoGet("PROSPER.OUT.QLE.Output[8]")
+
+                If Version = "IPM 11" Then KVA_BECq = DoGet("PROSPER.OUT.QLE.Output[8]")
                 'Torque en el eje
                 TorqEje_BECq = DoGet("PROSPER.OUT.QLE.Output[9]")
 
@@ -5453,40 +5384,40 @@ Public Class Crea
         ''' <returns> Verdadero si encuentra un error o de lo contyrario regresa Falso</returns>
         Private Function SensAgua_BN() As Boolean
             Try
-                If Equipment Then
+                'If Equipment Then
 
-                    ReDim Qgi_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
-                    Dim QgiVec(9), WcVec(9) As Double
-                    ' qli
-                    'ResultSystemVar({"Q"}) 
-
-
+                '    ReDim Qgi_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
+                '    Dim QgiVec(9), WcVec(9) As Double
+                '    ' qli
+                '    'ResultSystemVar({"Q"}) 
 
 
-                    Dim TotalResults As Integer = DoGet("PROSPER.OUT.SYS.Results.COUNT")
-
-                    If SensVars.Contains(138) Then
-                        For i = 0 To SensVarsVal(138).Count - 1
-                            QgiVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & i & "]")
-                        Next i
-                    End If
-
-                    If SensVars.Contains(6) Then
-                        For i = 0 To SensVarsVal(6).Count - 1
-                            WcVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" & i & "]")
-                        Next i
-                    End If
 
 
-                    For i = 0 To TotalResults - 1
-                        'Qliq_Res[][][]
-                    Next
-                    'Dim var3 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals.COUNT")
+                '    Dim TotalResults As Integer = DoGet("PROSPER.OUT.SYS.Results.COUNT")
 
-                    'Resul_System3var(CorrVFP, THPres.Val, Wc.Val, GOR_Total, var1, var2, var3, Qgi_Res, Wc_Res, Pws_Res, Qliq_Res, 138)
+                '    If SensVars.Contains(138) Then
+                '        For i = 0 To SensVarsVal(138).Count - 1
+                '            QgiVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[138].Vals[" & i & "]")
+                '        Next i
+                '    End If
 
-                Else
-                    ReDim Qgi_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
+                '    If SensVars.Contains(6) Then
+                '        For i = 0 To SensVarsVal(6).Count - 1
+                '            WcVec(i) = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[6].Vals[" & i & "]")
+                '        Next i
+                '    End If
+
+
+                '    For i = 0 To TotalResults - 1
+                '        'Qliq_Res[][][]
+                '    Next
+                '    'Dim var3 = DoGet("PROSPER.ANL.SYS.Sens.SensDB.Sens[1].Vals.COUNT")
+
+                '    'Resul_System3var(CorrVFP, THPres.Val, Wc.Val, GOR_Total, var1, var2, var3, Qgi_Res, Wc_Res, Pws_Res, Qliq_Res, 138)
+
+                'Else
+                ReDim Qgi_Res(9), Wc_Res(9), Pws_Res(0), Qliq_Res(9, 9, 0)
 
 
                     '
@@ -5618,11 +5549,11 @@ Public Class Crea
 
 
 
-                    'ResultSystemVar({"LiqRate"})
+                'ResultSystemVar({"LiqRate"})
 
 
 
-                End If
+                'End If
                 FlagSensWc = 1
                 Return True
             Catch ex As Exception
@@ -5758,7 +5689,7 @@ Public Class Crea
 
         End Function
 
-        Public Function carta_BEC() As Boolean
+        Public Function Carta_BEC() As Boolean
             Try
                 Dim Carga_Bombs As New Double         'Carga generada por la bomba al gasto dado m
                 Dim Gasto_PyT_bomba As New Double     'Gasto de liquido a condiciones de presión y temperatura de la bomba bpd
@@ -5794,8 +5725,9 @@ Public Class Crea
                 Efi_SepGas = DoGet("PROSPER.SIN.ESP.Efficiency")
                 Num_Etapa = DoGet("PROSPER.SIN.ESP.Stages")
                 Fac_desgaste = DoGet("PROSPER.SIN.ESP.Wear")
-                Carga_Bombs = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead")
-                Gasto_PyT_bomba = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
+
+                'Carga_Bombs = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead")
+                'Gasto_PyT_bomba = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
 
 
                 Frec_BEC.Val = DoGet("PROSPER.SIN.ESP.Frequency") 'BOMBA.FRECUENCIAHZ
@@ -5838,21 +5770,7 @@ Public Class Crea
                 Next j
 
 
-                'Dim indBomba As Integer = DoGet("PROSPER.SIN.ESP.DESPUMP")
 
-                'GralQuickLook = New MOD_POZO_QUICK() With {
-                '    .BC_PPR = DoGet("PROSPER.OUT.QLE.Output[0]"),
-                '    .BC_SVOLT = DoGet("PROSPER.OUT.QLE.Output[3]"),
-                '    .BC_PINPRES = DoGet("PROSPER.OUT.QLE.Output[4]"),
-                '    .BC_PDPRES = DoGet("PROSPER.OUT.QLE.Output[5]"),
-                '    .QLIQ = LiqRate,
-                '    .BC_DRATE = DoGet("PROSPER.OUT.QLE.Output[6]"),
-                '    .BC_GASFREE = DoGet("PROSPER.OUT.QLE.Output[7]"),
-                '    .BC_TOSH = DoGet("PROSPER.OUT.QLE.Output[9]"),
-                '    .BC_DACRP = DoGet("PROSPER.OUT.QLE.Output[10]"),
-                '    .BC_PHEAD = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpHead"),
-                '    .BC_PRATE = DoGet("PROSPER.OUT.SYS.Results[0].Sol.PumpAvRate")
-                '}
 
                 Return True
             Catch ex As Exception
@@ -6342,8 +6260,12 @@ Public Class Crea
                         'SolBHP(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.BHP")
                         'SolWHPress(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.WHPressure")
                         'SolWHTempe(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.WHTemperature")
+                        If Settings.GetBy("prosper_version") = "IPM 7.5" Then
+                            SolLiqRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & I & "][" & J & "][" & K & "].Sol.LiqRate")
+                        Else
+                            SolLiqRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.LiqRate")
+                        End If
 
-                        SolLiqRate(I, J, K) = DoGet("PROSPER.OUT.SYS.Results[" & L & "].Sol.LiqRate")
                         L += 1
                     Next K
                 Next J
@@ -7547,9 +7469,20 @@ Ciclo1:
             If ValidMinMaxInt(GasConing) = False Then
                 Errors.Add("Error: " + GasConing.Nomb + ", actualmente: " + GasConing.Val.ToString())
             End If
-            If ValidMinMaxDouble(QTest) = False Then
-                Errors.Add("Error: " + QTest.Nomb + ", actualmente: " + QTest.Val.ToString())
-            End If
+            Select Case IPRMethod.Val
+                Case 0
+                    If ValidMinMaxDouble(PI) = False Then
+                        Errors.Add("Error: " + PI.Nomb + ", actualmente: " + PI.Val.ToString())
+                    End If
+                Case 1
+                    If ValidMinMaxDouble(QTest) = False Then
+                        Errors.Add("Error: " + QTest.Nomb + ", actualmente: " + QTest.Val.ToString())
+                    End If
+                    If ValidMinMaxDouble(Ptest) = False Then
+                        Errors.Add("Error: " + Ptest.Nomb + ", actualmente: " + Ptest.Val.ToString())
+                    End If
+            End Select
+
 
             If FlagPvt = 0 Then
                 Errors.Add("No hay PVT generado en el archivo")
