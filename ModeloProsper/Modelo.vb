@@ -2,6 +2,7 @@
 Imports System.IO
 Imports System.Security.Permissions
 Imports ModeloCI
+Imports System.ServiceProcess
 'Lista de cambios - Por Bernardo Cauich
 '===================================================================
 '-La columna TRPRESS se migra de la tabla ModGeneral  a la tabla ModBNC
@@ -2289,15 +2290,17 @@ Public Class Modelo
     ''' Se forza el apagado del Open Server, matando todos los procesos activos.
     ''' </summary>
     Public Shared Sub ShutDown()
-        Dim PxServer = Process.GetProcessesByName("pxserver")
+        Dim PxServer As ServiceController = New ServiceController("pxserver") 'Process.GetProcessesByName("pxserver")
         Prosper.Disconnect()
-        If PxServer.Count() > 0 Then
+        'If PxServer.Count() > 0 Then
 
-            For i = 0 To PxServer.Count()
-                PxServer(i).Kill()
-            Next i
+        '    For i = 0 To PxServer.Count()
+        '        PxServer(i)
+        '    Next i
 
-        End If
+        'End If
+
+        PxServer.Stop()
 
 
         ModeloProsper.Settings.SetBy("open_server", "1")

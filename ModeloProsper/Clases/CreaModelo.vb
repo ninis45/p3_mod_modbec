@@ -4941,13 +4941,7 @@ Public Class Crea
                 ' Else
 
 
-                If Equipment Then
-                    TRPres.Val = DoGet("PROSPER.ANL.QLG.Surface[6][0]")
-                    If Version = "IPM 7.5" Then DiamValBNC.Val = DoGet("PROSPER.ANL.QLG.Gaslift[0]")
-                Else
-                    DoSet("PROSPER.ANL.QLG.Surface[6][0]", TRPres.Val)
-                    DoSet("PROSPER.ANL.QLG.Gaslift[0]", DiamValBNC.Val)
-                End If
+
 
                 DoSet("PROSPER.ANL.QLG.Surface[0][0]", THPres.Val)
 
@@ -4959,7 +4953,15 @@ Public Class Crea
 
                     DoSet("PROSPER.ANL.QLG.Surface[4][0]", Qg_Total + GLRate.Val)
 
-                    DoSet("PROSPER.ANL.QLG.Surface[5][0]", GLRate.Val)
+                DoSet("PROSPER.ANL.QLG.Surface[5][0]", GLRate.Val)
+
+                If Equipment Then
+                    TRPres.Val = DoGet("PROSPER.ANL.QLG.Surface[6][0]")
+                    If Version = "IPM 7.5" Then DiamValBNC.Val = DoGet("PROSPER.ANL.QLG.Gaslift[0]")
+                Else
+                    DoSet("PROSPER.ANL.QLG.Surface[6][0]", TRPres.Val)
+                    DoSet("PROSPER.ANL.QLG.Gaslift[0]", DiamValBNC.Val)
+                End If
 
 
 
@@ -4967,7 +4969,9 @@ Public Class Crea
 
                 DoSet("PROSPER.ANL.QLG.Gaslift[1]", ValveDepth.Val)
 
-                    DoSet("PROSPER.ANL.QLG.Tubing", 1)
+
+
+                DoSet("PROSPER.ANL.QLG.Tubing", 1)
 
                     DoSet("PROSPER.ANL.QLG.Tubing", CorrVFP)
 
@@ -7410,6 +7414,10 @@ Ciclo1:
         End Function
         Sub Validating()
             'Dim Errors As New List(Of String
+            'IPR
+            '====================================================================================
+
+
             'GENERALES
             '====================================================================================
             If ValidMinMaxInt(Fluid) = False Then
@@ -7480,6 +7488,9 @@ Ciclo1:
                     End If
                     If ValidMinMaxDouble(Ptest) = False Then
                         Errors.Add("Error: " + Ptest.Nomb + ", actualmente: " + Ptest.Val.ToString())
+                    End If
+                    If Ptest.Val > PRes.Val Then
+                        Errors.Add("Presion de Fondo Fluyendo no deber ser mayor a Presion del Yacimiento: " + Ptest.Val.ToString())
                     End If
             End Select
 
