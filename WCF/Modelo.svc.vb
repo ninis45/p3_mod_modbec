@@ -209,12 +209,57 @@ Public Class Modelo
 
             Logger.SetEstatus(2)
 
-            Dim License = My.Settings.LicensePROSPER
+            'Dim License = My.Settings.LicensePROSPER
 
 
             Dim result = modelo.Sensibilidad_BN()
 
             If result Then
+
+                Dim conds = db.PA_operacionPozosFecha(modelo.ModPozo.AGUJERO.IDPOZO).ToList()
+                Dim cond As PA_operacionPozosFecha_Result = conds(0)
+                Dim cabezera = db.CabeceraPozoGBN.Where(Function(w) w.bajaLogica Is Nothing And w.idPozo = modelo.ModPozo.AGUJERO.IDPOZO).SingleOrDefault()
+
+                If result And cabezera IsNot Nothing And cond.FEC_CONDICION = modelo.ModPozo.FECHAMODELO Then
+
+
+                    Dim inyeccion = db.DatosInyeccion.Where(Function(w) w.idCabeceraPozoGBN = cabezera.idCabeceraPozoGBN).ToList()
+
+
+                    inyeccion.ForEach(Function(e) db.DatosInyeccion.Remove(e))
+                    db.SaveChanges()
+
+
+                    Dim QGI = db.COMPORTAMIENTO_GAS.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
+
+                    If QGI IsNot Nothing Then
+                        Dim QGIDetalles = db.COMPORTAMIENTO_GAS_DETALLES.Where(Function(w) w.IDCOMPORTAMIENTOGAS = QGI.IDCOMPORTAMIENTOGAS).OrderBy(Function(o) o.XAUX).ToList()
+
+
+                        If QGIDetalles.Count > 0 Then
+
+                            For Each dt In QGIDetalles
+
+                                db.DatosInyeccion.Add(New DatosInyeccion() With {.idCabeceraPozoGBN = cabezera.idCabeceraPozoGBN, .qLiq = dt.YAUX.GetValueOrDefault(), .qGasBN = dt.XAUX.GetValueOrDefault()})
+
+                            Next
+                            db.SaveChanges()
+
+
+                        End If
+
+                    End If
+
+                    cabezera.porc_agua = cond.gastoagua
+                    cabezera.presionCabeza = cond.PRESION_TP.GetValueOrDefault()
+                    cabezera.qGasBN = cond.VOLUMEN_BN.GetValueOrDefault()
+                    cabezera.fecha = cond.FEC_CONDICION.GetValueOrDefault()
+
+
+                    db.Entry(cabezera).State = EntityState.Modified
+                    db.SaveChanges()
+                End If
+
                 Logger.SetEstatus(3, "Ejecución correcta(Remoto)")
             Else
                 Logger.SetEstatus(-1, "Hubo un error al realizar la operación")
