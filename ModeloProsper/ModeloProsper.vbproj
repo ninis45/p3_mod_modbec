@@ -44,9 +44,6 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="DBConnection">
-      <HintPath>..\WCF\bin\DBConnection.dll</HintPath>
-    </Reference>
     <Reference Include="EntityFramework">
       <HintPath>..\..\..\..\..\Program Files (x86)\Entity Framework Tools\NuGet Packages\EntityFramework.6.2.0\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
@@ -101,9 +98,7 @@
     <Compile Include="Estabilidad.vb" />
     <Compile Include="Helpers\Array.vb" />
     <Compile Include="Libraries\Analisis.vb" />
-    <Compile Include="Libraries\BaseDatosServidor.vb" />
     <Compile Include="Libraries\Debugger.vb" />
-    <Compile Include="Libraries\LecturaDatos.vb" />
     <Compile Include="Libraries\Logger.vb" />
     <Compile Include="Libraries\Settings.vb" />
     <Compile Include="Libraries\VariablesGlobalesServidor.vb" />
@@ -147,6 +142,7 @@
       <LastGenOutput>Settings.Designer.vb</LastGenOutput>
     </None>
     <None Include="packages.config" />
+    <None Include="Resources\Generic_11.Out" />
     <None Include="Resources\Generic_7_5.Out" />
   </ItemGroup>
   <ItemGroup>

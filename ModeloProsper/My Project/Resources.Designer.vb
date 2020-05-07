@@ -63,6 +63,16 @@ Namespace My.Resources
         '''<summary>
         '''  Busca un recurso adaptado de tipo System.Byte[].
         '''</summary>
+        Friend ReadOnly Property Generic_11() As Byte()
+            Get
+                Dim obj As Object = ResourceManager.GetObject("Generic_11", resourceCulture)
+                Return CType(obj,Byte())
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Busca un recurso adaptado de tipo System.Byte[].
+        '''</summary>
         Friend ReadOnly Property Generic_7_5() As Byte()
             Get
                 Dim obj As Object = ResourceManager.GetObject("Generic_7_5", resourceCulture)

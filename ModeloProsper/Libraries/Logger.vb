@@ -86,14 +86,7 @@ Public Class Logger
 
     End Sub
     Sub SetEstatus(ByVal Estatus As Integer, ByVal Message As String)
-        If Intentos + 1 > Me.Configuracion.MAXREINTENTOS Then
 
-            'If Me.Configuracion.ESTATUS = 2 Then
-            '    SetEstatus(-1)
-            'End If
-
-            Throw New Exception("Numero de intentos permitidos: " + Me.Configuracion.MAXREINTENTOS.ToString())
-        End If
 
         SetLog(Estatus, Message)
 

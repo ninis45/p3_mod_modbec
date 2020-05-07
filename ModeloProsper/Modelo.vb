@@ -9,7 +9,7 @@ Imports System.ServiceProcess
 Public Class Modelo
 
     Private db As New Entities_ModeloCI()
-    Private conexion As BaseDatosServidor
+
     Private MPrsp As Crea.Modelo
     Private MPrsu As UpdateModelo()
     Private IdLog As String
@@ -36,7 +36,7 @@ Public Class Modelo
     Private IPM As String = Settings.GetBy("prosper_version")
 
     Public Sub New()
-        CreateFolder()
+
     End Sub
     Public Sub New(ByVal IdModPozo As String)
         ModPozo = db.MOD_POZO.Include("CONFIGURACION_ADMINISTRADOR").Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
@@ -323,7 +323,7 @@ Public Class Modelo
 
                     Select Case IPM
                         Case "IPM 11"
-                            'File.WriteAllBytes(MPrsp.ArchivoPVT, My.Resources.Generic_7_5)
+                            File.WriteAllBytes(MPrsp.ArchivoPVT, My.Resources.Generic_11)
                         Case "IPM 7.5"
                             File.WriteAllBytes(MPrsp.ArchivoPVT, My.Resources.Generic_7_5)
                     End Select
@@ -454,6 +454,7 @@ Public Class Modelo
     End Sub
     Public Function Reading(ByVal LiftMethod As Integer, ByVal FileB As Byte(), ByVal FileName As String) As List(Of String)
         Try
+            CreateFolder()
             Dim Paths = FileName.Split("\".ToCharArray())
             Dim NameMaster As String = Paths(Paths.Length - 1)
             Dim Names = NameMaster.Split(".".ToCharArray())
@@ -2330,6 +2331,62 @@ Public Class Modelo
             System.IO.Directory.CreateDirectory(Path)
         End If
         Return True
+    End Function
+
+
+    Public Function Monitor(ByRef OpenServer As String) As List(Of String)
+
+        Dim Prosper As Integer
+        Dim Messages As New List(Of String)
+        Dim Estatus() As Integer = {0, 1, 2, -1}
+
+
+        Try
+            If ModeloProsper.Modelo.Dispose() Then
+                Settings.SetBy("open_server", "1")
+                Prosper = 1
+            Else
+                Settings.SetBy("open_server", "0")
+                Prosper = 0
+            End If
+
+            If OpenServer <> Prosper Then
+
+                If ModeloProsper.Modelo.Dispose() Then
+                    Messages.Add(String.Format("Open Server: {0} | {1} ", "Disponible", DateTime.Now.ToString()))
+                Else
+                    Messages.Add(String.Format("Open Server: {0} | {1} ", "Ocupado", DateTime.Now.ToString()))
+                End If
+
+
+                Dim Modelos As New Dictionary(Of Integer, Integer) From {
+                    {1, 0},
+                    {2, 0}
+                }
+                Dim ListModelos = db.VW_MOD_POZO.Where(Function(w) Estatus.Contains(w.ESTATUS)).GroupBy(Function(g) g.ESTATUS).Select(Function(s) New With {.Total = s.Count(), .Descripcion = s.Key}).ToList()
+
+
+                If ListModelos.Count > 0 Then
+                    For Each Mode In ListModelos
+                        Modelos(Mode.Descripcion) = Mode.Total
+                    Next
+                End If
+
+
+
+                If Modelos.Count > 0 Then
+                    Dim Message As String = "En cola " + Modelos(1).ToString() + ", proceso  " + Modelos(2).ToString()
+                    Messages.Add(Message)
+                End If
+
+                OpenServer = Prosper
+            End If
+
+            Return Messages
+        Catch ex As Exception
+            Throw New Exception(ex.Message)
+        End Try
+
     End Function
 
 

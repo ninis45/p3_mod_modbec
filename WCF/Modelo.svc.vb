@@ -11,7 +11,7 @@ Imports System.Threading.Tasks
 
 Public Class Modelo
     Implements IModelo
-    Private db As New Entities_ModeloCI()
+
     Private conexion As BaseDatosServidor
     Private MPrsp As Crea.Modelo
     Private IdLog As String
@@ -139,6 +139,7 @@ Public Class Modelo
     End Function
 
     Public Function Estabilidad(ByVal IdModPozo As String) As Boolean Implements IModelo.Estabilidad
+        Dim db As New Entities_ModeloCI()
         Dim Conf As CONFIGURACION = db.CONFIGURACION.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
 
         Dim modelo As New ModeloProsper.Estabilidad(Conf)
@@ -197,7 +198,7 @@ Public Class Modelo
 
     Public Function Sensibilidad_BN(ByVal IdModPozo As String) As Boolean Implements IModelo.Sensibilidad_BN
         Try
-
+            Dim db As New Entities_ModeloCI()
             Dim modelo As New ModeloProsper.Modelo(IdModPozo)
             Dim inicio As DateTime = DateTime.Now
 
@@ -315,7 +316,7 @@ Public Class Modelo
 
     End Sub
     Public Function Condiciones() As Dictionary(Of String, List(Of String)) Implements IModelo.Condiciones
-
+        Dim db As New Entities_ModeloCI()
         Dim Usuario = db.USUARIO.Where(Function(w) w.USUARIO1 = "richi").SingleOrDefault()
 
         If Usuario Is Nothing Then
@@ -523,58 +524,69 @@ Public Class Modelo
 
     End Function
     Public Function Monitor(ByRef OpenServer As String) As List(Of String) Implements IModelo.Monitor
-        Dim Prosper As Integer
-        Dim Messages As New List(Of String)
-        Dim Estatus() As Integer = {0, 1, 2, -1}
+
+        Dim Modelo = New ModeloProsper.Modelo()
+        Try
+
+            Return Modelo.Monitor(OpenServer)
+        Catch ex As Exception
+            Return New List(Of String) From {"Error: " + ex.Message}
+        End Try
 
 
 
-        If ModeloProsper.Modelo.Dispose() Then
-            Settings.SetBy("open_server", "1")
-            Prosper = 1
-        Else
-            Settings.SetBy("open_server", "0")
-            Prosper = 0
-        End If
-
-        If OpenServer <> Prosper Then
-
-            If ModeloProsper.Modelo.Dispose() Then
-                Messages.Add(String.Format("Open Server: {0} | {1} ", "Disponible", DateTime.Now.ToString()))
-            Else
-                Messages.Add(String.Format("Open Server: {0} | {1} ", "Ocupado", DateTime.Now.ToString()))
-            End If
-
-
-            Dim Modelos As New Dictionary(Of Integer, Integer) From {
-                {1, 0},
-                {2, 0}
-            }
-            Dim ListModelos = db.VW_MOD_POZO.Where(Function(w) Estatus.Contains(w.ESTATUS)).GroupBy(Function(g) g.ESTATUS).Select(Function(s) New With {.Total = s.Count(), .Descripcion = s.Key}).ToList()
-
-
-            If ListModelos.Count > 0 Then
-                For Each Mode In ListModelos
-                    Modelos(Mode.Descripcion) = Mode.Total
-                Next
-            End If
+        'Dim Prosper As Integer
+        'Dim Messages As New List(Of String)
+        'Dim Estatus() As Integer = {0, 1, 2, -1}
 
 
 
-            If Modelos.Count > 0 Then
-                Dim Message As String = "En cola " + Modelos(1).ToString() + ", proceso  " + Modelos(2).ToString()
-                Messages.Add(Message)
-            End If
+        'If ModeloProsper.Modelo.Dispose() Then
+        '    Settings.SetBy("open_server", "1")
+        '    Prosper = 1
+        'Else
+        '    Settings.SetBy("open_server", "0")
+        '    Prosper = 0
+        'End If
 
-            OpenServer = Prosper
-        End If
+        'If OpenServer <> Prosper Then
+
+        '    If ModeloProsper.Modelo.Dispose() Then
+        '        Messages.Add(String.Format("Open Server: {0} | {1} ", "Disponible", DateTime.Now.ToString()))
+        '    Else
+        '        Messages.Add(String.Format("Open Server: {0} | {1} ", "Ocupado", DateTime.Now.ToString()))
+        '    End If
+
+
+        '    Dim Modelos As New Dictionary(Of Integer, Integer) From {
+        '        {1, 0},
+        '        {2, 0}
+        '    }
+        '    Dim ListModelos = db.VW_MOD_POZO.Where(Function(w) Estatus.Contains(w.ESTATUS)).GroupBy(Function(g) g.ESTATUS).Select(Function(s) New With {.Total = s.Count(), .Descripcion = s.Key}).ToList()
+
+
+        '    If ListModelos.Count > 0 Then
+        '        For Each Mode In ListModelos
+        '            Modelos(Mode.Descripcion) = Mode.Total
+        '        Next
+        '    End If
+
+
+
+        '    If Modelos.Count > 0 Then
+        '        Dim Message As String = "En cola " + Modelos(1).ToString() + ", proceso  " + Modelos(2).ToString()
+        '        Messages.Add(Message)
+        '    End If
+
+        '    OpenServer = Prosper
+        'End If
 
 
 
 
 
 
-        Return Messages
+
     End Function
 
 
@@ -596,6 +608,7 @@ Public Class Modelo
 
     'Listado de modelos
     Public Function CountBy(ByVal Estatus As Integer) As Integer Implements IModelo.CountBy
+        Dim db As New Entities_ModeloCI()
         Dim List = db.VW_MOD_POZO.AsEnumerable()
         Select Case Estatus
             Case 0
@@ -618,6 +631,7 @@ Public Class Modelo
 
 
     Public Function GetList(ByVal Estatus As Integer, Optional ByVal Page As Integer = 1) As List(Of String) Implements IModelo.GetList
+        Dim db As New Entities_ModeloCI()
         Dim List = db.VW_MOD_POZO.OrderBy(Function(o) o.FECHAMODELO).AsEnumerable()
         Dim Result As List(Of String) = New List(Of String)
         Dim PerPage As Integer = Settings.GetBy("records_per_page")
