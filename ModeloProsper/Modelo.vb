@@ -17,7 +17,6 @@ Public Class Modelo
     Private Fin As DateTime
     Private User As String
     Private Logger As Logger
-    Private Environment As String = Settings.GetBy("enviroment")
     Property Messages As String
     Property Conected As Boolean
     Private ProgramPath As String = "C:\Program Files (x86)\Petroleum Experts\" + Settings.GetBy("prosper_version") + "\prosper.exe"

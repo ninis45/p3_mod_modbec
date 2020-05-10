@@ -308,10 +308,7 @@ Public Class Modelo
 
     ''End Function
 
-    Public Function Execute(ByVal Qgi As Double, ByVal Pwh As Double, ByVal WC As Double, ByVal File As Byte) As Boolean
 
-        Return False
-    End Function
     Public Sub Scheduled()
 
     End Sub
