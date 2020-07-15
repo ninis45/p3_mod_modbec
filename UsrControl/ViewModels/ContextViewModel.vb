@@ -1755,7 +1755,7 @@ Public Class ContextViewModel
     Public Function SaveMecanico(ByVal IdAgujero As String) As Boolean
         Try
             'Eliminamos tuberias
-            Dim mecanicos = db.MOD_POZO_TUBERIA.Where(Function(w) w.IDAGUJERO = IdAgujero).ToList()
+            Dim mecanicos = db.MOD_POZO_TUBERIA.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
             If mecanicos.Count > 0 Then
                 mecanicos.ForEach(Function(e) db.MOD_POZO_TUBERIA.Remove(e))
                 db.SaveChanges()
@@ -1767,7 +1767,7 @@ Public Class ContextViewModel
             For Each tub In list_mecanicos
                 db.MOD_POZO_TUBERIA.Add(New MOD_POZO_TUBERIA() With {
                     .IDMODPOZOTUBERIA = Guid.NewGuid.ToString().ToUpper(),
-                    .IDAGUJERO = IdAgujero,
+                    .IDMODPOZO = IdModPozo,
                     .IDTIPOTUBERIA = tub.IDTIPOTUBERIA,
                     .ETIQUETA = tub.ETIQUETA,
                     .CIDIAM = tub.CIDIAM,

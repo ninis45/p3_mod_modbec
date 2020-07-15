@@ -23,6 +23,8 @@ Public Class Modelo
     Property ModPozo As MOD_POZO
     Private Config As CONFIGURACION_ADMINISTRADOR
     Private ModArchivo As ARCHIVOS_PROSPER
+    Public ModTuberias As New List(Of MOD_POZO_TUBERIA)
+
 
     Private Path As String = "C:\PVTs\Tmps\"
     Private DeleteFile As Boolean
@@ -34,8 +36,11 @@ Public Class Modelo
     Private TimeLimitT As Integer = 30
     Private IPM As String = Settings.GetBy("prosper_version")
 
-    Public Sub New()
 
+    Public Sub New()
+        ModPozo = New MOD_POZO()
+        DeleteFile = IIf(Settings.GetBy("del_pvt") = "1", True, False)
+        CreateFolder()
     End Sub
     Public Sub New(ByVal IdModPozo As String)
         ModPozo = db.MOD_POZO.Include("CONFIGURACION_ADMINISTRADOR").Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
@@ -81,16 +86,50 @@ Public Class Modelo
     Public Sub Reset(ByVal IdModPozo As String, ByVal MaxIntentos As Integer)
         Try
             'Eliminar logs
-            Dim configuracion = db.CONFIGURACION_ADMINISTRADOR.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
+            Dim configuracion = ModPozo.CONFIGURACION_ADMINISTRADOR.SingleOrDefault() ' db.CONFIGURACION_ADMINISTRADOR.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
 
             If configuracion IsNot Nothing Then
 
-                configuracion.ESTATUS = 1
+                'eliminar iprs
+                Dim iprs = db.VLP_IPR.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
+                iprs.ForEach(Function(e) db.VLP_IPR.Remove(e))
+                ''db.SaveChanges()
+
+                'eliminar correlaciones
+                Dim corrs = db.CORRELACION.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
+                corrs.ForEach(Function(e) db.CORRELACION.Remove(e))
+                ''db.SaveChanges()
+
+                'eliminar vlps
+                Dim vlps = db.VLP_IPR_GASTO_INYECCION.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
+                vlps.ForEach(Function(e) db.VLP_IPR_GASTO_INYECCION.Remove(e))
+                ''db.SaveChanges()
+
+                'eliminar gasto de gas
+                Dim gastos = db.COMPORTAMIENTO_GAS.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
+                gastos.ForEach(Function(e) db.COMPORTAMIENTO_GAS.Remove(e))
+                ''db.SaveChanges()
+
+                'eliminar Diagnosticos
+                Dim diagnosticos = db.DIAGNOSTICOS.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
+                diagnosticos.ForEach(Function(e) db.DIAGNOSTICOS.Remove(e))
+                ''db.SaveChanges()
+
+                'eliminar wc
+                Dim prods = db.PRODUCTIVIDAD.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
+                prods.ForEach(Function(e) db.PRODUCTIVIDAD.Remove(e))
+                ''db.SaveChanges()
+
+                'eliminar quicklook
+                Dim quick = db.MOD_POZO_QUICK.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
+                quick.ForEach(Function(e) db.MOD_POZO_QUICK.Remove(e))
+                db.SaveChanges()
+
 
                 Dim intentos = db.EJECUCION_PROCESOS.Where(Function(w) w.IDCONFIGURACION = configuracion.IDCONFIGURACION And w.ENDRECORD Is Nothing).ToList()
 
                 If MaxIntentos > 0 Then
-
+                    configuracion.ESTATUS = 1
 
                     If intentos.Count > 0 Then
                         For Each e In intentos
@@ -106,11 +145,26 @@ Public Class Modelo
                     db.SaveChanges()
                 Else
 
+                    Select Case configuracion.ESTATUS
+                        Case -1
+                            configuracion.ESTATUS = 1
+                            configuracion.FECHA_PROGRAMACION = configuracion.FECHA_PROGRAMACION.AddMinutes(5)
 
-                    configuracion.FECHA_PROGRAMACION = configuracion.FECHA_PROGRAMACION.AddMinutes(5)
+                        Case 1
+                            configuracion.ESTATUS = 0
+                        Case 2
+                            configuracion.ESTATUS = 0
 
+                        Case 3
+                            If intentos.Count > 0 Then
+                                For Each e In intentos
+                                    e.ENDRECORD = DateTime.Now + ": " + e.IDEJECUCION
+                                    db.Entry(e).State = Entity.EntityState.Modified
+                                Next
+                            End If
+                            configuracion.ESTATUS = 1
 
-
+                    End Select
 
                     db.Entry(configuracion).State = Entity.EntityState.Modified
                     db.SaveChanges()
@@ -120,58 +174,32 @@ Public Class Modelo
                 Throw New Exception("No existe la configuración o fue borrada")
             End If
 
-            'eliminar iprs
-            Dim iprs = db.VLP_IPR.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
-            iprs.ForEach(Function(e) db.VLP_IPR.Remove(e))
-            db.SaveChanges()
 
-            'eliminar correlaciones
-            Dim corrs = db.CORRELACION.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
-            corrs.ForEach(Function(e) db.CORRELACION.Remove(e))
-            db.SaveChanges()
-
-            'eliminar vlps
-            Dim vlps = db.VLP_IPR_GASTO_INYECCION.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
-            vlps.ForEach(Function(e) db.VLP_IPR_GASTO_INYECCION.Remove(e))
-            db.SaveChanges()
-
-            'eliminar gasto de gas
-            Dim gastos = db.COMPORTAMIENTO_GAS.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
-            gastos.ForEach(Function(e) db.COMPORTAMIENTO_GAS.Remove(e))
-            db.SaveChanges()
-
-            'eliminar Diagnosticos
-            Dim diagnosticos = db.DIAGNOSTICOS.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
-            diagnosticos.ForEach(Function(e) db.DIAGNOSTICOS.Remove(e))
-            db.SaveChanges()
-
-            'eliminar wc
-            Dim prods = db.PRODUCTIVIDAD.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
-            prods.ForEach(Function(e) db.PRODUCTIVIDAD.Remove(e))
-            db.SaveChanges()
-
-            'eliminar quicklook
-            Dim quick = db.MOD_POZO_QUICK.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
-            quick.ForEach(Function(e) db.MOD_POZO_QUICK.Remove(e))
-            db.SaveChanges()
 
         Catch ex As Exception
-            Throw New Exception(ex.Message)
+            If ex.InnerException IsNot Nothing Then
+                Throw New Exception(ex.InnerException.Message)
+            Else
+                Throw New Exception(ex.Message)
+            End If
+
         End Try
 
     End Sub
     Public Sub Delete(ByVal IdModPozo As String)
         Try
-
-            Reset(IdModPozo, 1)
-
-            Dim mod_configuracion = db.CONFIGURACION_ADMINISTRADOR.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
-            If mod_configuracion Is Nothing Then
-                Throw New Exception("El modelo no existe o fue borrado: " + IdModPozo)
-            End If
-
-            db.CONFIGURACION_ADMINISTRADOR.Remove(mod_configuracion)
+            ModPozo = db.MOD_POZO.Find(IdModPozo)
+            db.MOD_POZO.Remove(ModPozo)
             db.SaveChanges()
+            'Reset(IdModPozo, 1)
+
+            'Dim mod_configuracion = db.CONFIGURACION_ADMINISTRADOR.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
+            'If mod_configuracion Is Nothing Then
+            '    Throw New Exception("El modelo no existe o fue borrado: " + IdModPozo)
+            'End If
+
+            'db.CONFIGURACION_ADMINISTRADOR.Remove(mod_configuracion)
+            'db.SaveChanges()
         Catch ex As Exception
             Throw New Exception(ex.Message)
         End Try
@@ -261,7 +289,7 @@ Public Class Modelo
             End If
 
 
-            Dim edo_mecanico = db.VW_EDO_MECANICO.Where(Function(w) w.IDAGUJERO = vw_mod_pozo.IDAGUJERO).OrderBy(Function(o) o.ORDEN).ToList()
+            Dim edo_mecanico = db.MOD_POZO_TUBERIA.Where(Function(w) w.IDMODPOZO = vw_mod_pozo.IDMODPOZO).OrderBy(Function(o) o.ORDEN).ToList() ' db.VW_EDO_MECANICO.Where(Function(w) w.IDAGUJERO = vw_mod_pozo.IDAGUJERO).OrderBy(Function(o) o.ORDEN).ToList()
             Dim edo_trayectoria = db.MOD_POZO_TRAYEC.Where(Function(w) w.IDMODPOZO = vw_mod_pozo.IDMODPOZO).OrderBy(Function(o) o.PROFUNDIDADMD).ToList()
             Dim edo_temperatura = db.MOD_POZO_TEMP.Where(Function(w) w.IDMODPOZO = vw_mod_pozo.IDMODPOZO).OrderBy(Function(o) o.PROFUNDIDADMD).ToList()
 
@@ -329,7 +357,7 @@ Public Class Modelo
 
 
 
-                    SetPvt(vw_mod_pozo.IDAGUJERO, ModPvt.IDPVTGENERAL)
+                    SetPvt(vw_mod_pozo.IDAGUJERO, ModPvt)
 
 
                 End If
@@ -352,6 +380,18 @@ Public Class Modelo
                 'Dim InitTime As New Task(AddressOf TimeLimit(MPrsp))
                 'Task.Run(Sub() TimeLimit(ModPozo, MPrsp))
                 If MPrsp.Execute() Then
+
+                    If ModPozo.CONFIGURACION IsNot Nothing AndAlso ModPozo.CONFIGURACION.Count > 0 Then
+
+                        Dim MPEst = New Estabilidad(ModPozo.CONFIGURACION(0))
+
+                        Task.Run(Sub()
+                                     MPEst.Execute()
+                                     MPEst.Save()
+                                 End Sub)
+
+
+                    End If
 
                     ''Depreciar los datos ya se guardan en el QuickLook
                     'If MPrsp.LiftMethod.Val = 2 Then
@@ -399,6 +439,57 @@ Public Class Modelo
                         db.Entry(ModArchivo).State = Entity.EntityState.Modified
                         db.SaveChanges()
 
+                        'Guardamos PVT
+                        '===================================================
+                        Dim Pvt = db.MOD_POZO_PVT.Where(Function(w) w.IDMODPOZO = ModPozo.IDMODPOZO).SingleOrDefault()
+
+                        If Pvt Is Nothing Then
+
+                            Pvt = New MOD_POZO_PVT() With
+                            {
+                                .IDMODPOZO = ModPozo.IDMODPOZO,
+                                .CREATED_ON = DateTime.Now,
+                                .IDMODPOZOPVT = Guid.NewGuid().ToString().ToUpper(),
+                                .API = MPrsp.Pvt.API,
+                                .CO2 = MPrsp.Pvt.CO2,
+                                .DRG = MPrsp.Pvt.Drg,
+                                .GOR = MPrsp.Pvt.GOR,
+                                .H2S = MPrsp.Pvt.H2S,
+                                .N2 = MPrsp.Pvt.N2,
+                                .WSAL = MPrsp.Pvt.Salinidad,
+                                .IDPVTGENERAL = "NA"
+                            }
+
+
+
+
+
+                            db.MOD_POZO_PVT.Add(Pvt)
+                        Else
+                            db.Entry(Pvt).State = Entity.EntityState.Modified
+
+                        End If
+
+                        Dim ToDeleteMatch = db.MOD_POZO_PVT_MATCH.Where(Function(w) w.IDMODPOZOPVT = Pvt.IDMODPOZOPVT).ToList()
+
+                        If ToDeleteMatch.Count > 0 Then
+                            ToDeleteMatch.ForEach(Function(e) db.MOD_POZO_PVT_MATCH.Remove(e))
+                        End If
+
+
+                        For i = 0 To MPrsp.Pvt.Pprueba.Length - 1
+                            db.MOD_POZO_PVT_MATCH.Add(New MOD_POZO_PVT_MATCH() With {
+                                  .IDMODPOZOPVT = Pvt.IDMODPOZOPVT,
+                                  .IDMOD_POZO_PVT_MATCH = Guid.NewGuid().ToString().ToUpper(),
+                                  .BP = MPrsp.Pvt.Psat,
+                                  .OFVF = MPrsp.Pvt.Bo(i),
+                                  .OVIS = MPrsp.Pvt.Muo(i),
+                                  .PRES = MPrsp.Pvt.Pprueba(i),
+                                  .RGA = MPrsp.Pvt.Rs(i)
+                            })
+                        Next
+                        db.SaveChanges()
+
 
                         If MPrsp.Equipment Then
                             Task.Run(Sub() SaveEquipment(ModPozo.IDMODPOZO))
@@ -435,6 +526,210 @@ Public Class Modelo
         End Try
 
     End Function
+
+    Public Function Condiciones() As Dictionary(Of String, List(Of String))
+        Dim db As New Entities_ModeloCI()
+        Dim Usuario = db.USUARIO.Where(Function(w) w.USUARIO1 = "richi").SingleOrDefault()
+
+        If Usuario Is Nothing Then
+            Throw New Exception("El usuario no existe o fue removido")
+        End If
+
+
+        'CONDICIONES DE OPERACION PARA LOS MODELOS
+        '===========================================================================================================================================
+        Dim Modelos = db.VW_MOD_POZO.Where(Function(w) w.ENDRECORD Is Nothing And (w.FUNCION = 6 And w.ESTATUS = 3) Or w.FUNCION = 2).OrderByDescending(Function(o) o.FECHAMODELO).GroupBy(Function(g) g.IDPOZO).ToList()
+        Dim CatSaps As Dictionary(Of Integer, Integer) = db.CAT_SAP.ToDictionary(Function(k) k.IDCATSAP, Function(d) d.PROSPER.GetValueOrDefault())
+        Dim Messages As Dictionary(Of String, List(Of String)) = New Dictionary(Of String, List(Of String)) From {
+            {"success", New List(Of String)},
+            {"error", New List(Of String)},
+            {"info", New List(Of String)}
+        }
+
+        If Modelos.Count > 0 Then
+
+
+            For Each Pozo In Modelos
+                Try
+                    Dim VwModPozo = Pozo.OrderByDescending(Function(o) o.FECHAMODELO).ToList()(0)
+                    'Dim VwModPozo As VW_MOD_POZO
+                    'If VwModPozos.Count > 0 Then
+                    '    VwModPozo = VwModPozos(0)
+                    'End If
+
+                    'If VwModPozo Is Nothing Then
+                    Dim Condicion = (From cond In db.TB_CONDICIONES_OPERACION Where cond.IDPOZO = Pozo.Key And cond.FECHA_CONTABLE = (db.TB_CONDICIONES_OPERACION.Where(Function(w) w.IDPOZO = Pozo.Key).Max(Function(m) m.FECHA_CONTABLE)) Select cond).SingleOrDefault()
+                    Dim Archivo = (From ar In db.ARCHIVOS_PROSPER Where ar.borradoLogico Is Nothing And ar.idModPozo = VwModPozo.IDMODPOZO And ar.fecha = (db.ARCHIVOS_PROSPER.Where(Function(w) w.idModPozo = VwModPozo.IDMODPOZO And w.borradoLogico Is Nothing).Max(Function(w) w.fecha)) Select ar).SingleOrDefault()
+                    Dim General = db.MOD_POZO_GENERAL.Where(Function(w) w.IDMODPOZO = VwModPozo.IDMODPOZO).SingleOrDefault()
+
+
+                    If General Is Nothing Then
+                        Throw New Exception("No hay datos generales en " + VwModPozo.POZO)
+                    End If
+                    If Archivo Is Nothing Then
+                        Throw New Exception("No hay archivo en " + VwModPozo.POZO)
+
+                    End If
+
+                    'Condicion = New TB_CONDICIONES_OPERACION() With {
+                    '.FECHA_CONTABLE = DateTime.Now
+                    '}
+
+                    If Condicion IsNot Nothing AndAlso Condicion.FECHA_CONTABLE <> VwModPozo.FECHAMODELO Then
+                        Dim ModPozo As MOD_POZO = New MOD_POZO() With {
+                                    .IDMODPOZO = Guid.NewGuid().ToString().ToUpper(),
+                                    .FECHAMODELO = Condicion.FECHA_CONTABLE,
+                                    .FUNCION = 2,
+                                    .OBSERVACIONES = "ACTUALIZACION DE MODELO",
+                                    .IDAGUJERO = VwModPozo.IDAGUJERO,
+                                    .ARCHIVO = VwModPozo.ARCHIVO
+                        }
+                        db.Entry(Archivo).State = Entity.EntityState.Detached
+
+                        'If Archivo IsNot Nothing Then
+                        Archivo.idModPozo = ModPozo.IDMODPOZO
+                        Archivo.fecha = DateTime.Now
+                        ModPozo.ARCHIVOS_PROSPER.Add(Archivo)
+                        'End If
+
+
+                        Dim ModTray = (From tray In db.MOD_POZO_TRAYEC Where tray.IDMODPOZO = VwModPozo.IDMODPOZO And tray.PROFUNDIDADMV = (db.MOD_POZO_TRAYEC.Where(Function(w) w.IDMODPOZO = VwModPozo.IDMODPOZO).Max(Function(m) m.PROFUNDIDADMV)) Select tray).SingleOrDefault()
+
+                        If ModTray Is Nothing Then
+                            Throw New Exception("No hay registro de trayectorias: " + VwModPozo.POZO)
+                        End If
+
+                        Dim PT = CIPresion.Presion.GetResultado(ModPozo.FECHAMODELO.GetValueOrDefault(), ModPozo.IDAGUJERO, ModTray.PROFUNDIDADMV.GetValueOrDefault())
+                        Dim WC As Double = Water.Clases.Aforo.GetRAA(VwModPozo.IDPOZO, Condicion.FECHA_CONTABLE)
+
+                        ModPozo.MOD_POZO_GENERAL.Add(New MOD_POZO_GENERAL() With {
+                                .IDMODPOZOGENERAL = Guid.NewGuid().ToString().ToUpper(),
+                                .IDMODPOZO = ModPozo.IDMODPOZO,
+                                .LIFTMETHOD = General.LIFTMETHOD,
+                                .WC = IIf(WC > 0, WC, General.WC),
+                                .THPD = Condicion.P_TP.GetValueOrDefault(),
+                                .TRPRES = Condicion.P_TR.GetValueOrDefault(),
+                                .TRES = PT("TRES"), ' Necesario para RGA
+                                .PRES = PT("PRES"), 'Necesario para RGA
+                                .TOTGOR = 0, ' (Condicion.GASTO_GAS.GetValueOrDefault() * 1000000) / (5.615 * Condicion.GASTO_ACEITE.GetValueOrDefault() / 100),
+                                .RGATOTALAFORO = 0 ' (Condicion.GASTO_GAS.GetValueOrDefault() * 1000000) / (5.615 * Condicion.GASTO_ACEITE.GetValueOrDefault() / 100)
+                        })
+
+                        ModPozo.MOD_POZO_TRAYEC.Add(New MOD_POZO_TRAYEC() With {
+                                    .IDMODPOZO = ModPozo.IDMODPOZO,
+                                    .IDMODPOZOTRAYEC = Guid.NewGuid().ToString().ToUpper(),
+                                    .PROFUNDIDADMD = ModTray.PROFUNDIDADMD,
+                                    .PROFUNDIDADMV = ModTray.PROFUNDIDADMV
+                        })
+
+                        Select Case CatSaps(VwModPozo.IDCATSAP)
+
+                            Case 1
+                                ModPozo.MOD_POZO_BNC.Add(New MOD_POZO_BNC() With {.IDMODPOZO = ModPozo.IDMODPOZO, .GLRINY = Condicion.GASTO_GAS})
+                            Case 2
+                                ModPozo.MOD_POZO_BEC.Add(New MOD_POZO_BEC() With {.IDMODPOZO = ModPozo.IDMODPOZO, .IDMODPOZOBEC = Guid.NewGuid().ToString().ToUpper(), .FREC_BEC = Condicion.FREC_OPER})
+                            Case Else
+                                ' Messages.Add("SAP no encontrado: " + VW_MOD_POZO.IDMODPOZO);
+                        End Select
+
+
+                        ModPozo.CONFIGURACION_ADMINISTRADOR.Add(New CONFIGURACION_ADMINISTRADOR() With {.IDMODPOZO = ModPozo.IDMODPOZO, .IDUSUARIO = Archivo.idUsuario, .FECHA_REGLA = ModPozo.FECHAMODELO, .FECHA_PROGRAMACION = DateTime.Now.AddMinutes(30), .ESTATUS = 1, .MAXREINTENTOS = 1, .IDCONFIGURACION = Guid.NewGuid().ToString().ToUpper()})
+                        db.MOD_POZO.Add(ModPozo)
+                        db.SaveChanges()
+
+                        Messages("success").Add("Modelo agregado :" + VwModPozo.POZO)
+                    Else
+                        Messages("info").Add("No hay C.Ope.:" + VwModPozo.POZO)
+
+                    End If
+
+                Catch ex As Exception
+                    If ex.InnerException IsNot Nothing Then
+
+
+                        Messages("error").Add("Modelos: " + ex.InnerException.Message)
+                    Else
+                        Messages("error").Add("Modelos: " + ex.Message)
+                    End If
+
+
+                End Try
+
+            Next
+        End If
+
+        'CONDICION DE OPERACION PARA DISTRIBUCION DE GAS
+        '=============================================================================================================================================
+        Dim Items As List(Of CabeceraPozoGBN) = db.CabeceraPozoGBN.Where(Function(w) w.bajaLogica Is Nothing).ToList()
+        If Items.Count > 0 Then
+            For Each Item In Items
+                Dim conds = db.PA_operacionPozosFecha(Item.idPozo).OrderByDescending(Function(o) o.FEC_CONDICION).ToList() ''New ObservableCollection < PA_operacionPozosFecha_Result > (db.PA_operacionPozosFecha(Item.idPozo).ToList());
+                If conds.Count > 0 Then
+                    Try
+                        Dim ModPozo As MOD_POZO = New MOD_POZO() With {
+                                .IDMODPOZO = Guid.NewGuid().ToString().ToUpper(),
+                                .OBSERVACIONES = "CONDICION DISTRIBUCION DE GAS",
+                                .FUNCION = 1
+                    }
+
+                        Dim cond As PA_operacionPozosFecha_Result = conds(0)
+
+
+                        If Item.archivo Is Nothing Then
+                            Throw New Exception("No hay archivo del modelo")
+                        End If
+
+                        If cond.FEC_CONDICION.GetValueOrDefault() > Item.fecha Then
+
+                            Dim agujeros = db.AGUJERO.Where(Function(w) w.IDPOZO = Item.idPozo).OrderByDescending(Function(o) o.FECHAAPERTURA).ToList()
+
+                            If agujeros.Count > 0 Then
+                                ModPozo.FECHAMODELO = cond.FEC_CONDICION
+                                ModPozo.IDAGUJERO = agujeros(0).IDAGUJERO
+
+                                ModPozo.CONFIGURACION_ADMINISTRADOR.Add(New CONFIGURACION_ADMINISTRADOR() With {.IDMODPOZO = ModPozo.IDMODPOZO, .IDUSUARIO = Usuario.IDUSUARIO, .FECHA_REGLA = ModPozo.FECHAMODELO, .FECHA_PROGRAMACION = DateTime.Now.AddMinutes(30), .ESTATUS = 1, .MAXREINTENTOS = 1, .IDCONFIGURACION = Guid.NewGuid().ToString().ToUpper()})
+                                ModPozo.ARCHIVOS_PROSPER.Add(New ARCHIVOS_PROSPER() With {.idModPozo = ModPozo.IDMODPOZO, .idUsuario = Usuario.IDUSUARIO, .archivo = Item.archivo, .nombreArchivo = Item.nombreArchivo, .fecha = DateTime.Now})
+                                ModPozo.MOD_POZO_GENERAL.Add(New MOD_POZO_GENERAL() With {.IDMODPOZO = ModPozo.IDMODPOZO, .IDMODPOZOGENERAL = Guid.NewGuid().ToString().ToUpper(), .WC = cond.gastoagua, .THPD = cond.PRESION_TP})
+                                ModPozo.MOD_POZO_BNC.Add(New MOD_POZO_BNC() With {.IDMODPOZO = ModPozo.IDMODPOZO, .GLRINY = cond.VOLUMEN_BN, .QGIMIN = 0, .QGIMAX = 10})
+
+
+                                db.MOD_POZO.Add(ModPozo)
+                                db.SaveChanges()
+
+                                Item.porc_agua = cond.gastoagua
+                                Item.presionCabeza = cond.PRESION_TP.GetValueOrDefault()
+                                Item.qGasBN = cond.VOLUMEN_BN.GetValueOrDefault()
+                                Item.fecha = cond.FEC_CONDICION.GetValueOrDefault()
+                                db.Entry(Item).State = EntityState.Modified
+                                db.SaveChanges()
+                                Messages("success").Add("Modelo agregado (Distribución de gas):" + Item.POZO.NOMBRE)
+                            Else
+                                Throw New Exception("No hay datos del agujero del pozo")
+                            End If
+                        End If
+
+
+
+
+                    Catch ex As Exception
+                        If ex.InnerException IsNot Nothing Then
+
+
+                            Messages("error").Add("DG: " + ex.InnerException.Message)
+                        Else
+                            Messages("error").Add("DG: " + ex.Message)
+                        End If
+                    End Try
+
+
+                End If
+
+
+            Next
+        End If
+
+        Return Messages
+    End Function
     Private Sub DeleteFiles()
         If DeleteFile Then
             If File.Exists(FileOut) Then
@@ -470,35 +765,35 @@ Public Class Modelo
 
             If File.Exists(MPrsp.ArchivoPVT) = False Then
                 File.WriteAllBytes(MPrsp.ArchivoPVT, FileB)
+
+
             End If
 
+            FileOut = MPrsp.ArchivoPVT
             MPrsp.Execute()
             MPrsp.Validating()
 
-            If MPrsp.LiftMethod.Val <> LiftMethod Then
-                MPrsp.Errors.Add("El Sistema Artificial declarado en el archivo no corresponde con el pozo.")
-            End If
+            'If MPrsp.LiftMethod.Val <> LiftMethod Then
+            '    MPrsp.Errors.Add("El Sistema Artificial declarado en el archivo no corresponde con el pozo.")
+            'End If
 
 
 
-            If DeleteFile = False Then
-                MPrsp.ArchivoPVT = ""
-            End If
+            'If DeleteFile = False Then
+            '    MPrsp.ArchivoPVT = ""
+            'End If
 
-            If File.Exists(MPrsp.ArchivoPVT) Then
-                File.Delete(MPrsp.ArchivoPVT)
-            End If
+            'If File.Exists(MPrsp.ArchivoPVT) Then
+            '    File.Delete(MPrsp.ArchivoPVT)
+            'End If
+            DeleteFiles()
+            LoadGeneral()
 
             Return MPrsp.Errors
 
 
         Catch ex As Exception
-            If DeleteFile = False Then
-                MPrsp.ArchivoPVT = ""
-            End If
-            If File.Exists(MPrsp.ArchivoPVT) Then
-                File.Delete(MPrsp.ArchivoPVT)
-            End If
+            DeleteFiles()
             Throw New Exception(ex.Message)
         End Try
 
@@ -539,51 +834,54 @@ Public Class Modelo
         Return MPrsp.Server
     End Function
 
-    Private Function SetPvt(ByVal IdAgujero As String, ByVal IdPvtGeneral As String) As Boolean
+    Private Function SetPvt(ByVal IdAgujero As String, ByVal Pvt As MOD_POZO_PVT) As Boolean
         Try
-            Dim Formacion = db.VW_PVT.Where(Function(w) w.IDAGUJERO = IdAgujero And w.IDPVTGENERAL = IdPvtGeneral).SingleOrDefault()
+            'Dim Formacion = db.VW_PVT.Where(Function(w) w.IDAGUJERO = IdAgujero And w.IDPVTGENERAL = IdPvtGeneral).SingleOrDefault()
 
-            If Formacion Is Nothing Then
-                Throw New Exception("PVT: No hay datos de formación")
+            If Pvt Is Nothing Then
+                Throw New Exception("PVT: No hay datos para construir el PVT")
             End If
 
-            If Formacion.SALINIDAD < 1 Or Formacion.SALINIDAD Is Nothing Then
+            If Pvt.WSAL < 1 Or Pvt.WSAL Is Nothing Then
                 Throw New Exception("PVT: No hay datos de Salinidad")
             End If
 
             'Carga de PVT
             MPrsp.Pvt = New Pvt()
 
-            MPrsp.Pvt.GOR = Formacion.GOR
-            MPrsp.Pvt.API = Formacion.API
-            MPrsp.Pvt.Drg = Formacion.DRG
-            MPrsp.Pvt.Salinidad = Formacion.SALINIDAD
-            MPrsp.Pvt.Tpvt = Formacion.TEMP
+            MPrsp.Pvt.GOR = Pvt.GOR.GetValueOrDefault()
+            MPrsp.Pvt.API = Pvt.API.GetValueOrDefault()
+            MPrsp.Pvt.Drg = Pvt.DRG.GetValueOrDefault()
+            MPrsp.Pvt.Salinidad = Pvt.WSAL.GetValueOrDefault()
+            MPrsp.Pvt.Tpvt = Pvt.TEMP.GetValueOrDefault()
+            MPrsp.Pvt.H2S = Pvt.H2S.GetValueOrDefault()
+            MPrsp.Pvt.N2 = Pvt.N2.GetValueOrDefault()
+            MPrsp.Pvt.CO2 = Pvt.CO2.GetValueOrDefault()
 
             Dim PSat As Double = 0
 
-            Dim Pvts = db.VW_PVT_GRAFICA.Where(Function(w) w.IDPVTGENERAL = Formacion.IDPVTGENERAL And w.TEMPERATURA = Formacion.TEMP).OrderBy(Function(w) w.PPRUEBA).ToList()
+            ' Dim Pvts = db.VW_PVT_GRAFICA.Where(Function(w) w.IDPVTGENERAL = Formacion.IDPVTGENERAL And w.TEMPERATURA = Formacion.TEMP).OrderBy(Function(w) w.PPRUEBA).ToList()
 
-            If Pvts.Count = 0 Then
-                Throw New Exception("PVT: No hay registros de PVT")
+            If Pvt.MOD_POZO_PVT_MATCH.Count = 0 Then
+                Throw New Exception("PVT: No hay registros para construir el PVT Match")
             End If
 
-            ReDim MPrsp.Pvt.Pprueba(Pvts.Count - 1)
-            ReDim MPrsp.Pvt.Rs(Pvts.Count - 1)
-            ReDim MPrsp.Pvt.Bo(Pvts.Count - 1)
-            ReDim MPrsp.Pvt.Muo(Pvts.Count - 1)
+            ReDim MPrsp.Pvt.Pprueba(Pvt.MOD_POZO_PVT_MATCH.Count - 1)
+            ReDim MPrsp.Pvt.Rs(Pvt.MOD_POZO_PVT_MATCH.Count - 1)
+            ReDim MPrsp.Pvt.Bo(Pvt.MOD_POZO_PVT_MATCH.Count - 1)
+            ReDim MPrsp.Pvt.Muo(Pvt.MOD_POZO_PVT_MATCH.Count - 1)
 
-            For i = 0 To Pvts.Count - 1
-                MPrsp.Pvt.Pprueba(i) = Pvts(i).PPRUEBA
-                MPrsp.Pvt.Rs(i) = Pvts(i).RS
-                MPrsp.Pvt.Bo(i) = Pvts(i).BO
-                MPrsp.Pvt.Muo(i) = Pvts(i).VISCOSIDADACEITE
+            For i = 0 To Pvt.MOD_POZO_PVT_MATCH.Count - 1
+                MPrsp.Pvt.Pprueba(i) = Pvt.MOD_POZO_PVT_MATCH(i).PRES
+                MPrsp.Pvt.Rs(i) = Pvt.MOD_POZO_PVT_MATCH(i).RGA
+                MPrsp.Pvt.Bo(i) = Pvt.MOD_POZO_PVT_MATCH(i).OFVF
+                MPrsp.Pvt.Muo(i) = Pvt.MOD_POZO_PVT_MATCH(i).OVIS
 
-                PSat += Pvts(i).PB 'CAMBIAR POR PB
+                PSat += Pvt.MOD_POZO_PVT_MATCH(i).BP 'CAMBIAR POR PB
             Next
 
 
-            MPrsp.Pvt.Psat = PSat / Pvts.Count
+            MPrsp.Pvt.Psat = PSat / Pvt.MOD_POZO_PVT_MATCH.Count
 
             'MPrsp.Pvt.Execute()
 
@@ -595,7 +893,7 @@ Public Class Modelo
     End Function
     Private Sub SaveEquipment(ByVal IdModPozo As String)
 
-
+        'LoadGeneral()
 
 
         Dim TipoTuberias = db.CAT_TIPO_TUBERIA.ToDictionary(Function(d) d.NUMERO, Function(d) d.IDTIPOTUBERIA)
@@ -603,7 +901,7 @@ Public Class Modelo
 
         'Borrado de equipamiento 
         '================================================================================
-        Dim Tubs = db.MOD_POZO_TUBERIA.Where(Function(w) w.IDAGUJERO = ModPozo.IDAGUJERO).ToList()
+        Dim Tubs = db.MOD_POZO_TUBERIA.Where(Function(w) w.IDMODPOZO = ModPozo.IDMODPOZO).ToList()
         Dim Trays = db.MOD_POZO_TRAYEC.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
         Dim Temps = db.MOD_POZO_TEMP.Where(Function(w) w.IDMODPOZO = IdModPozo).ToList()
 
@@ -627,7 +925,7 @@ Public Class Modelo
 
                 If MPrsp.Label(I) IsNot Nothing Then
                     db.MOD_POZO_TUBERIA.Add(New MOD_POZO_TUBERIA() With {
-                     .IDAGUJERO = ModPozo.IDAGUJERO,
+                     .IDMODPOZO = ModPozo.IDMODPOZO,
                      .IDMODPOZOTUBERIA = Guid.NewGuid().ToString().ToUpper(),
                      .ETIQUETA = MPrsp.Label(I),
                      .IDTIPOTUBERIA = TipoTuberias(MPrsp.DType.Val(I)),
@@ -678,7 +976,7 @@ Public Class Modelo
             ' ModGeneral.CO2 = MPrsp.CO2.Val
             ModGeneral.COMENTA = MPrsp.Comenta
             ModGeneral.COMPLETION = MPrsp.Completion.Val
-            'ModGeneral.DIAMVALBNC = MPrsp.DiamValBNC.Val
+            'ModGeneral.DIAMVALBNC = MPrsp.DiamValBNC.Val ya esta en BN
             ModGeneral.DIETZ = MPrsp.Dietz.Val
             ModGeneral.DRAINAGE = MPrsp.Drainage.Val
             ModGeneral.EMULSION = MPrsp.Emulsion.Val
@@ -699,6 +997,9 @@ Public Class Modelo
             ModGeneral.LIFTYPE = MPrsp.LiftType.Val
             'ModGeneral.METHOD = MPrsp.Method.Val
             ModGeneral.MGSKINMETHOD = MPrsp.MGSkinMethod.Val
+            ModGeneral.MGSKINMODEL = MPrsp.DPSkinMethod.Val
+            ModGeneral.THICKNESS = MPrsp.Thickness.Val
+            ModGeneral.SKIN = MPrsp.Skin.Val
             ModGeneral.QTEST = MPrsp.QTest.Val
             ModGeneral.WELLTYPE = MPrsp.WellType.Val
             ModGeneral.WELL = MPrsp.Well
@@ -717,6 +1018,9 @@ Public Class Modelo
             ModGeneral.QW = MPrsp.Qw.Val
             ModGeneral.PREDICT = MPrsp.Predict.Val
             ModGeneral.RGATOTALAFORO = MPrsp.RGA_Aforo.Val
+            ModGeneral.COMPACT = MPrsp.Compact.Val
+            ModGeneral.RESPERM = MPrsp.ResPerm.Val
+            ModGeneral.PI = MPrsp.PI.Val
 
 
             db.Entry(ModGeneral).State = Entity.EntityState.Modified
@@ -744,7 +1048,7 @@ Public Class Modelo
                     ModBNC.RANGESYSTEM = MPrsp.RangeSystem.Val
                     ModBNC.TRPRES = MPrsp.TRPres.Val
                     ModBNC.VALVEDEPTH = MPrsp.ValveDepth.Val
-
+                    ModBNC.NivMedDisp = MPrsp.NivMedDisp.Val
 
                     db.Entry(ModBNC).State = Entity.EntityState.Modified
                     db.SaveChanges()
@@ -780,31 +1084,7 @@ Public Class Modelo
 
 
             End Select
-            'Guardamos PVT
-            '===================================================
-            Dim Pvt = db.MOD_POZO_PVT.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
 
-            If Pvt Is Nothing Then
-                Pvt = New MOD_POZO_PVT() With
-                {
-                    .IDMODPOZO = IdModPozo,
-                    .CREATED_ON = DateTime.Now,
-                    .IDMODPOZOPVT = Guid.NewGuid().ToString().ToUpper(),
-                    .API = MPrsp.Pvt.API,
-                    .CO2 = MPrsp.Pvt.CO2,
-                    .DRG = MPrsp.Pvt.Drg,
-                    .GOR = MPrsp.Pvt.GOR,
-                    .H2S = MPrsp.Pvt.H2S,
-                    .N2 = MPrsp.Pvt.N2,
-                    .WSAL = MPrsp.Pvt.Salinidad,
-                    .IDPVTGENERAL = "NA"
-                }
-                db.MOD_POZO_PVT.Add(Pvt)
-            Else
-                db.Entry(Pvt).State = Entity.EntityState.Modified
-
-            End If
-            db.SaveChanges()
 
 
 
@@ -887,7 +1167,7 @@ Public Class Modelo
             End If
 
             If ModPozo.CONFIGURACION_ADMINISTRADOR.SingleOrDefault().ESTATUS.GetValueOrDefault() <> 1 Then
-                Throw New Exception("No es posible ejecutar este modelo: Estado " + ModPozo.CONFIGURACION_ADMINISTRADOR.SingleOrDefault().ESTATUS.GetValueOrDefault())
+                Throw New Exception("No es posible ejecutar este modelo: Estado " + ModPozo.CONFIGURACION_ADMINISTRADOR.SingleOrDefault().ESTATUS.GetValueOrDefault().ToString())
             End If
 
             'If PxServer.Count() > 0 Then
@@ -1859,7 +2139,183 @@ Public Class Modelo
 
     End Sub
 
-    Private Function LoadGeneral(ByVal general As MOD_POZO_GENERAL, ByVal edo_mecanico As List(Of VW_EDO_MECANICO), ByVal edo_trayectoria As List(Of MOD_POZO_TRAYEC), ByVal edo_temp As List(Of MOD_POZO_TEMP)) As Boolean
+
+    ''' <summary>
+    ''' Retorna los valores obtenidos del archivo .Out  en objetos de base de datos: ModPozo
+    ''' </summary>
+    ''' <returns></returns>
+    Private Function LoadGeneral() As Boolean
+        Try
+            Dim TipoTuberias = db.CAT_TIPO_TUBERIA.ToDictionary(Function(d) d.NUMERO, Function(d) d.IDTIPOTUBERIA)
+
+
+            ModPozo.MOD_POZO_PVT.Add(New MOD_POZO_PVT() With {
+                    .IDPVTGENERAL = "NA",
+                    .IDMODPOZOPVT = Guid.NewGuid().ToString().ToUpper(),
+                    .API = MPrsp.Pvt.API,
+                    .CO2 = MPrsp.Pvt.CO2,
+                    .DRG = MPrsp.Pvt.Drg,
+                    .GOR = MPrsp.Pvt.GOR,
+                    .H2S = MPrsp.Pvt.H2S,
+                    .N2 = MPrsp.Pvt.N2,
+                    .WSAL = MPrsp.Pvt.Salinidad
+            })
+
+            For i = 0 To MPrsp.Pvt.Pprueba.Length - 1
+                ModPozo.MOD_POZO_PVT(0).MOD_POZO_PVT_MATCH.Add(New MOD_POZO_PVT_MATCH() With {
+                     .IDMOD_POZO_PVT_MATCH = Guid.NewGuid().ToString().ToUpper(),
+                     .PRES = MPrsp.Pvt.Pprueba(i),
+                     .RGA = MPrsp.Pvt.Rs(i),
+                     .OFVF = MPrsp.Pvt.Bo(i),
+                     .OVIS = MPrsp.Pvt.Muo(i),
+                     .BP = MPrsp.Pvt.Psat
+                })
+            Next
+
+
+
+            ModPozo.MOD_POZO_GENERAL.Add(New MOD_POZO_GENERAL() With
+            {
+                .PTEST = MPrsp.Ptest.Val,
+                .PRES = MPrsp.PRes.Val,
+                .COMENTA = MPrsp.Comenta,
+                .PVTMODEL = MPrsp.PVTModel.Val,
+                .INFLOWTYPE = MPrsp.InflowType.Val,
+                .SEPARATOR = MPrsp.Separator.Val,
+                .TEMPMODEL = MPrsp.TempModel.Val,
+                .RANGESYSTEM = MPrsp.RangeSystem.Val,
+                .OUTPUTRES = MPrsp.OutputRes.Val,
+                .COMPLETION = MPrsp.Completion.Val,
+                .DIETZ = MPrsp.Dietz.Val,
+                .DRAINAGE = MPrsp.Drainage.Val,
+                .EMULSION = MPrsp.Emulsion.Val,
+                .FLOWTYPE = MPrsp.FlowType.Val,
+                .FLUID = MPrsp.Fluid.Val,
+                .GASCONING = MPrsp.GasConing.Val,
+                .GRAVELPACK = MPrsp.GravelPack.Val,
+                .HTC = MPrsp.Htc.Val,
+                .HYDRATE = MPrsp.Hydrate.Val,
+                .IPRMETHOD = MPrsp.IPRMethod.Val,
+                .IRElK = MPrsp.IRELK.Val,
+                .LIFTMETHOD = MPrsp.LiftMethod.Val,
+                .LIFTYPE = MPrsp.LiftType.Val,
+                .MGSKINMETHOD = MPrsp.MGSkinMethod.Val,
+                .MGSKINMODEL = IIf(MPrsp.DPSkinMethod.Val < 0, 0, MPrsp.DPSkinMethod.Val),
+                .THICKNESS = MPrsp.Thickness.Val,
+                .SKIN = MPrsp.Skin.Val,
+                .QTEST = MPrsp.QTest.Val,
+                .WELLTYPE = MPrsp.WellType.Val,
+                .WELL = MPrsp.Well,
+                .WC = MPrsp.Wc.Val,
+                .WBR = MPrsp.WBR.Val,
+                .WATVIS = MPrsp.WatVis.Val,
+                .VISMOD = MPrsp.VisMod.Val,
+                .VALVEDEPTH = MPrsp.ValveDepth.Val,
+                .TRES = MPrsp.TRes.Val,
+                .RGATOTALAFORO = MPrsp.RGA_Aforo.Val,
+                .TOTGOR = MPrsp.TotGor.Val,
+                .THPD = MPrsp.THPres.Val,
+                .THTD = MPrsp.THTemp.Val,
+                .QG = MPrsp.Qg.Val,
+                .QO = MPrsp.Qo.Val,
+                .QW = MPrsp.Qw.Val,
+                .PREDICT = MPrsp.Predict.Val,
+                .COMPACT = MPrsp.Compact.Val,
+                .RESPERM = MPrsp.ResPerm.Val,
+                .PI = MPrsp.PI.Val
+            })
+            Select Case MPrsp.LiftMethod.Val
+                Case 1
+                    ' Dim ModBNC = db.MOD_POZO_BNC.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
+                    ModPozo.MOD_POZO_BNC.Add(New MOD_POZO_BNC() With
+                    {
+                    .CO2 = MPrsp.CO2.Val,
+                    .DIAMVAL = MPrsp.DiamValBNC.Val,
+                    .ENTRY = MPrsp.Entry.Val,
+                    .GLRATE = MPrsp.GLRate.Val,
+                    .GLRINY = MPrsp.GLRiny.Val,
+                    .GRAVITY = MPrsp.Gravity.Val,
+                    .H2S = MPrsp.H2S.Val,
+                    .METHOD = MPrsp.Method.Val,
+                    .N2 = MPrsp.N2.Val,
+                    .QGIMAX = MPrsp.QgiMax.Val,
+                    .QGIMIN = MPrsp.QgiMin.Val,
+                    .RANGESYSTEM = MPrsp.RangeSystem.Val,
+                    .TRPRES = MPrsp.TRPres.Val,
+                    .VALVEDEPTH = MPrsp.ValveDepth.Val,
+                    .NivMedDisp = MPrsp.NivMedDisp.Val
+                    })
+                Case 2
+                    ModPozo.MOD_POZO_BEC.Add(New MOD_POZO_BEC() With
+                    {
+                    .FRECMIN = MPrsp.FrecMin.Val,
+                    .FRECMAX = MPrsp.FrecMax.Val,
+                    .PROF_BEC = MPrsp.Prof_BEC.Val,
+                    .FREC_BEC = MPrsp.Frec_BEC.Val,
+                    .ODMAX_BEC = MPrsp.ODMax_BEC.Val,
+                    .LONGCABLE_BEC = MPrsp.LongCable_BEC.Val,
+                    .EFISEPGAS_BEC = MPrsp.EfiSepGas_BEC.Val,
+                    .ETAPAS_BEC = MPrsp.Etapas_BEC.Val,
+                    .VOLTSUP_BEC = MPrsp.VoltSup_BEC.Val,
+                    .DESGASTE_BEC = MPrsp.Desgaste_BEC.Val,
+                    .REDUCGAS_BEC = MPrsp.ReducGas_BEC.Val,
+                    .BOMBA_BEC = MPrsp.Bomba_BEC.Val,
+                    .MOTOR_BEC = MPrsp.Motor_BEC.Val,
+                    .POTENCIAMOTOR_BEC = MPrsp.PotenciaMotor_BEC.Val,
+                    .CABLE_BEC = MPrsp.Cable_BEC.Val,
+                    .PRESUC_BEC = MPrsp.PreSuc_BEC.Val,
+                    .CORRIENTE_BEC = MPrsp.Corriente_BEC.Val,
+                    .POTENCIA_BEC = MPrsp.Potencia_BEC.Val,
+                    .PREDES_BEC = MPrsp.PreDes_BEC.Val,
+                    .Qpromedio = MPrsp.PumpRate.Val,
+                    .General = MPrsp.PumpHead.Val
+                    })
+
+            End Select
+            'ESTADO MECANICO
+            '=================================================================
+            For I = 0 To MPrsp.NumDatEdoMec.Val - 1
+
+                If MPrsp.Label(I) IsNot Nothing Then
+                    ModTuberias.Add(New MOD_POZO_TUBERIA() With {
+                     .ETIQUETA = MPrsp.Label(I),
+                     .IDTIPOTUBERIA = TipoTuberias(MPrsp.DType.Val(I)),
+                     .ORDEN = I,
+                     .MD = Double.Parse(MPrsp.Depth.Val(I)),
+                     .TIDIAM = Double.Parse(MPrsp.TID.Val(I)),
+                     .TIROUG = Double.Parse(MPrsp.TIR.Val(I)),
+                     .TODIAM = Double.Parse(MPrsp.TOD.Val(I)),
+                     .TOROUG = Double.Parse(MPrsp.TOR.Val(I)),
+                     .CIDIAM = Double.Parse(MPrsp.CID.Val(I)),
+                     .CIROUG = Double.Parse(MPrsp.CIR.Val(I))
+                    })
+                End If
+
+
+            Next
+            'TRAYECTORIAS
+            '=================================================================
+            For I = 0 To MPrsp.NumDatTrayecto.Val - 1
+                ModPozo.MOD_POZO_TRAYEC.Add(New MOD_POZO_TRAYEC() With {
+                    .PROFUNDIDADMD = Double.Parse(MPrsp.RDMd.Val(I)),
+                    .PROFUNDIDADMV = Double.Parse(MPrsp.RDTvd.Val(I))
+                })
+            Next I
+
+            'TEMPERATURAS
+            '=================================================================
+            For I = 0 To MPrsp.NumDatTemp.Val - 1
+                ModPozo.MOD_POZO_TEMP.Add(New MOD_POZO_TEMP() With {
+                    .PROFUNDIDADMD = Double.Parse(MPrsp.PTMd.Val(I)),
+                    .TEMPERATURA = Double.Parse(MPrsp.PTTmp.Val(I))
+                })
+            Next I
+            Return True
+        Catch ex As Exception
+            Throw New Exception(ex.Message)
+        End Try
+    End Function
+    Private Function LoadGeneral(ByVal general As MOD_POZO_GENERAL, ByVal edo_mecanico As List(Of MOD_POZO_TUBERIA), ByVal edo_trayectoria As List(Of MOD_POZO_TRAYEC), ByVal edo_temp As List(Of MOD_POZO_TEMP)) As Boolean
 
         Dim mod_bnc = db.MOD_POZO_BNC.Where(Function(w) w.IDMODPOZO = general.IDMODPOZO).SingleOrDefault()
         Dim mod_bec = db.MOD_POZO_BEC.Where(Function(w) w.IDMODPOZO = general.IDMODPOZO).SingleOrDefault()
@@ -2047,7 +2503,7 @@ Public Class Modelo
             ' 0: Cinco / Martín-Bronz
             ' 1: Wong-Cliford
             ' 2: Cinco (2) / Martín-Bronz
-            MPrsp.DPSkinMethod.Val = general.MGSKINMETHOD.GetValueOrDefault()
+            MPrsp.DPSkinMethod.Val = general.MGSKINMODEL.GetValueOrDefault()
 
             ' Permeabilidad del yacimiento
             MPrsp.ResPerm.Val = general.RESPERM.GetValueOrDefault()
@@ -2173,7 +2629,7 @@ Public Class Modelo
                     '      2: SSSV
                     '      3: Restriction
                     '      4: Casing
-                    If i > 0 Then MPrsp.DType.Val(i) = edo_mecanico(i).NUMERO.ToString()
+                    If i > 0 Then MPrsp.DType.Val(i) = edo_mecanico(i).CAT_TIPO_TUBERIA.NUMERO.ToString() 'NUMERO.ToString()
                     ' Profundidad desarrollada
                     MPrsp.Depth.Val(i) = IIf(edo_mecanico(i).ETIQUETA.Contains("SSSV"), "0", edo_mecanico(i).MD.ToString())
                     ' Diametro interior de la tuberia de produccion

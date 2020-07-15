@@ -117,6 +117,9 @@ Public Class Pvt
                 Next i
             Else
                 ReDim Preserve Paux(ndatos + Ndatosarriba)
+                ReDim Preserve RGAaux(ndatos + Ndatosarriba)
+                ReDim Preserve Boaux(ndatos + Ndatosarriba)
+                ReDim Preserve Muoaux(ndatos + Ndatosarriba)
 
                 For i = 1 To Ndatosarriba
                     Paux(ndatos + i) = arribapb(i - 1).Presion

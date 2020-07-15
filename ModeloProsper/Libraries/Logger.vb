@@ -45,7 +45,7 @@ Public Class Logger
 
 
     End Sub
-    'Depreciar parece no hace falta
+
     Sub SetLog(ByVal Estatus As Integer, ByVal Message As String)
 
         If Intentos < Configuracion.MAXREINTENTOS Then
@@ -70,10 +70,13 @@ Public Class Logger
     Sub SetEstatus(ByVal Estatus As Integer)
 
         If Intentos + 1 > Me.Configuracion.MAXREINTENTOS Then
+            If Me.Configuracion.ESTATUS = 1 Then
+                Estatus = -1
+                Me.Configuracion.ESTATUS = Estatus
+                db.Entry(Me.Configuracion).State = Entity.EntityState.Modified
+                db.SaveChanges()
+            End If
 
-            'If Me.Configuracion.ESTATUS = 2 Then
-            '    SetEstatus(-1)
-            'End If
 
             Throw New Exception("Numero de intentos permitidos: " + Me.Configuracion.MAXREINTENTOS.ToString())
         End If

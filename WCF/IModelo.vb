@@ -37,7 +37,7 @@ Public Interface IModelo
     Function Condicion(ByVal IdModPozo As String, ByVal User As String) As Boolean
 
     <OperationContract()>
-    Function Reading(ByVal LiftMethod As Integer, ByVal FileUpload As Byte(), ByVal FileName As String) As List(Of String)
+    Function Reading(ByVal LiftMethod As Integer, ByVal FileUpload As Byte(), ByVal FileName As String) As Dictionary(Of String, String)
 
     <OperationContract()>
     Function Estabilidad(ByVal IdModPozo As String) As Boolean

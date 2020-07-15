@@ -64,7 +64,8 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\ModeloCI.dll</HintPath>
     </Reference>
-    <Reference Include="ModeloProsper">
+    <Reference Include="ModeloProsper, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>..\ModeloProsper\bin\Debug\ModeloProsper.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
