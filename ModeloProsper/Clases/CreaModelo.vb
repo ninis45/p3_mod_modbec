@@ -2491,6 +2491,8 @@ Public Class Crea
                     ''DoSet("PROSPER.SIN.SUM.Analyst", Analyst)
                     ''DoSet("PROSPER.SIN.SUM.Date", DatGenDate)
                     ''DoSet("PROSPER.Sin.Sum.Comments", Comenta)
+                    ''DatGenDate = DoGet("PROSPER.SIN.SUM.Date")
+                    Comenta = DoGet("PROSPER.Sin.Sum.Comments")
 
                     '
                     ' Predict: 0 = Pressure Only
@@ -4857,6 +4859,10 @@ Public Class Crea
                     DiamValBNC.Val = DoGet("PROSPER.ANL.QLG.Gaslift[0]")
                 End If
 
+
+                If TRPres.Val = 0 Then
+                    Throw New Exception("Presíon Qgi debe ser mayor a cero")
+                End If
                 'If Version = "IPM 11" AndAlso TRPres.Val = 0 Then
                 '    TRPres.Val = DoGet("PROSPER.ANL.QLG.Surface[6][0]")
                 'End If
@@ -5033,7 +5039,9 @@ Public Class Crea
                 Return True
             Catch ex As Exception
                 FlagQuickLook = 0
-                Throw New Exception("QuickLook_BN: " + ex.Message)
+
+                Throw New Exception("QuickLook BN: " + ex.Message)
+
             End Try
 
         End Function
@@ -7373,12 +7381,7 @@ Ciclo1:
             If ValidMinMaxInt(GasConing) = False Then
                 Errors.Add("Error: " + GasConing.Nomb + ", actualmente: " + GasConing.Val.ToString())
             End If
-            If ValidMinMaxDouble(QTest) = False Then
-                Errors.Add("Error: " + QTest.Nomb + ", actualmente: " + QTest.Val.ToString())
-            End If
-            If ValidMinMaxDouble(Ptest) = False Then
-                Errors.Add("Error: " + Ptest.Nomb + ", actualmente: " + Ptest.Val.ToString())
-            End If
+
 
             Select Case LiftMethod.Val
                 Case 1
@@ -7414,6 +7417,9 @@ Ciclo1:
                     If ValidMinMaxDouble(Ptest) = False Then
                         Errors.Add("Error: " + Ptest.Nomb + ", actualmente: " + Ptest.Val.ToString())
                     End If
+
+
+
                     'If Ptest.Val > PRes.Val Then REVISAR TALVEZ USE OTRO ALGORITMO
                     '    Errors.Add("Presion de Fondo Fluyendo no deber ser mayor a Presion del Yacimiento: " + Ptest.Val.ToString())
                     'End If

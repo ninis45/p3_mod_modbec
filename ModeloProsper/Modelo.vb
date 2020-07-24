@@ -756,7 +756,7 @@ Public Class Modelo
 
 
             MPrsp = New Crea.Modelo()
-
+            MPrsp.Version = Settings.GetBy("prosper_version")
             'MPrsp.SaveEquip = ModArchivo.equipment.GetValueOrDefault()
             MPrsp.Equipment = True
             MPrsp.SaveFile = False
@@ -970,7 +970,7 @@ Public Class Modelo
 
 
             Dim ModGeneral = db.MOD_POZO_GENERAL.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
-
+            ModGeneral.DATGENDATE = DateTime.Now
             ModGeneral.PTEST = MPrsp.Ptest.Val
             ModGeneral.PRES = MPrsp.PRes.Val
             ' ModGeneral.CO2 = MPrsp.CO2.Val
@@ -2176,6 +2176,7 @@ Public Class Modelo
 
             ModPozo.MOD_POZO_GENERAL.Add(New MOD_POZO_GENERAL() With
             {
+                .DATGENDATE = DateTime.Now,
                 .PTEST = MPrsp.Ptest.Val,
                 .PRES = MPrsp.PRes.Val,
                 .COMENTA = MPrsp.Comenta,

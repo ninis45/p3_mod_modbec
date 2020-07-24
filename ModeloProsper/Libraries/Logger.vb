@@ -67,6 +67,12 @@ Public Class Logger
 
 
     End Sub
+    Sub SetEstatus(ByVal Estatus As Integer, ByVal FechaProg As DateTime)
+        Me.Configuracion.ESTATUS = Estatus
+        Me.Configuracion.FECHA_PROGRAMACION = FechaProg
+        db.Entry(Me.Configuracion).State = Entity.EntityState.Modified
+        db.SaveChanges()
+    End Sub
     Sub SetEstatus(ByVal Estatus As Integer)
 
         If Intentos + 1 > Me.Configuracion.MAXREINTENTOS Then
@@ -93,11 +99,11 @@ Public Class Logger
 
         SetLog(Estatus, Message)
 
-        'If Me.Configuracion.ESTATUS = 1 Or Me.Configuracion.ESTATUS = 2 Then
+
         Me.Configuracion.ESTATUS = Estatus
         db.Entry(Me.Configuracion).State = Entity.EntityState.Modified
         db.SaveChanges()
-        ' End If
+
 
     End Sub
 End Class

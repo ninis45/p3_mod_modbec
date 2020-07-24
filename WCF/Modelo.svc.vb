@@ -73,7 +73,9 @@ Public Class Modelo
                 Throw New Exception("Open server ocupado")
             End If
 
-
+            If Logger.Configuracion.ESTATUS = 3 Then
+                Throw New Exception("El modelo ha sido ejecutado anteriormente")
+            End If
 
             Logger.SetEstatus(2)
 
@@ -87,8 +89,14 @@ Public Class Modelo
 
             Return result
         Catch ex As Exception
-            If Logger IsNot Nothing AndAlso Logger.Configuracion.ESTATUS = 2 Then
-                Logger.SetEstatus(-1, ex.Message)
+            If Logger IsNot Nothing Then
+                If Logger.Configuracion.ESTATUS = 2 Then
+                    Logger.SetEstatus(-1, ex.Message)
+                End If
+
+                If Logger.Intentos < Logger.Configuracion.MAXREINTENTOS Then
+                    Logger.SetEstatus(1, Logger.Configuracion.FECHA_PROGRAMACION.AddMinutes(10))
+                End If
             End If
 
             Throw New Exception(ex.Message)
