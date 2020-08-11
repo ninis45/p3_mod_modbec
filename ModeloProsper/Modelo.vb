@@ -393,16 +393,7 @@ Public Class Modelo
 
                     End If
 
-                    ''Depreciar los datos ya se guardan en el QuickLook
-                    'If MPrsp.LiftMethod.Val = 2 Then
-                    '    Dim mod_bec = db.MOD_POZO_BEC.Where(Function(w) w.IDMODPOZO = vw_mod_pozo.IDMODPOZO).SingleOrDefault()
 
-                    '    mod_bec.Qpromedio = MPrsp.QPromedio
-                    '    mod_bec.General = MPrsp.CGenerada
-
-                    '    db.Entry(mod_bec).State = Entity.EntityState.Modified
-                    '    db.SaveChanges()
-                    'End If
 
                     SaveIPR(ModPozo.IDMODPOZO)
                     SaveCorrelacion(ModPozo.IDMODPOZO)
@@ -971,6 +962,7 @@ Public Class Modelo
 
             Dim ModGeneral = db.MOD_POZO_GENERAL.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
             ModGeneral.DATGENDATE = DateTime.Now
+            ModGeneral.GDEPTH = MPrsp.GDepth.Val
             ModGeneral.PTEST = MPrsp.Ptest.Val
             ModGeneral.PRES = MPrsp.PRes.Val
             ' ModGeneral.CO2 = MPrsp.CO2.Val
@@ -1056,7 +1048,7 @@ Public Class Modelo
                     Dim ModBec = db.MOD_POZO_BEC.Where(Function(w) w.IDMODPOZO = IdModPozo).SingleOrDefault()
 
                     If ModBec Is Nothing Then
-                        Throw New Exception("No existe la tabla ModBNC para los datos en modo lectura del archivo (.Out)")
+                        Throw New Exception("No existe la tabla ModBEC para los datos en modo lectura del archivo (.Out)")
                     End If
 
                     ModBec.FRECMIN = MPrsp.FrecMin.Val
@@ -1081,7 +1073,8 @@ Public Class Modelo
                     ModBec.Qpromedio = MPrsp.PumpRate.Val
                     ModBec.General = MPrsp.PumpHead.Val
 
-
+                    db.Entry(ModBec).State = Entity.EntityState.Modified
+                    db.SaveChanges()
 
             End Select
 
@@ -2177,6 +2170,7 @@ Public Class Modelo
             ModPozo.MOD_POZO_GENERAL.Add(New MOD_POZO_GENERAL() With
             {
                 .DATGENDATE = DateTime.Now,
+                .GDEPTH = MPrsp.GDepth.Val,
                 .PTEST = MPrsp.Ptest.Val,
                 .PRES = MPrsp.PRes.Val,
                 .COMENTA = MPrsp.Comenta,
@@ -2522,6 +2516,8 @@ Public Class Modelo
             'Datos de modelo IP
             '========================================
             MPrsp.PI.Val = general.PI.GetValueOrDefault()
+
+            MPrsp.GDepth.Val = general.GDEPTH.GetValueOrDefault()
 
 
             Select Case general.LIFTMETHOD

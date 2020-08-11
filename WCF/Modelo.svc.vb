@@ -426,7 +426,7 @@ Public Class Modelo
 
 
             Case 1
-                List = List.Where(Function(w) w.ESTATUS.GetValueOrDefault() = Estatus Or w.ESTATUS.GetValueOrDefault() = 2)
+                List = List.Where(Function(w) w.ESTATUS.GetValueOrDefault() = Estatus)
             Case 3
 
                 List = List.Where(Function(w) w.ESTATUS.GetValueOrDefault() = Estatus Or w.ESTATUS.GetValueOrDefault() = -1)
